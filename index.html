@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XSXB-Slash 刀光生成器</title>
+<style>
+/* look follows XSXB-MOCAP: cream paper + Klein blue */
+:root{color-scheme:light;
+  --bg:#F5F1E8;--paper:#FFFDF8;--stage:#ECE4D4;--sunk:#EDE6D8;--line:#E4DCCB;--line2:#D2C7B1;
+  --ink:#1B1915;--ink2:#4A453C;--mut:#7A7366;--k:#002FA7;--k-h:#0038C4;--k-t:#E4E9F5;--k-t2:#CCD6EE;--err:#B3261E;
+  --sh:0 1px 2px rgba(45,35,15,.04),0 8px 24px -8px rgba(45,35,15,.10);
+  --disp:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+  --font:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+  --text:var(--ink);--dim:var(--mut);--acc:var(--k);--panel:var(--paper)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2.5px solid var(--k);outline-offset:2px}
+.top{display:flex;align-items:center;gap:22px;height:72px;padding:0 32px}
+.mark{display:flex;align-items:center;gap:12px;font:800 18px/1 var(--disp);letter-spacing:.16em;white-space:nowrap}
+.mark i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--k)}
+.mark b{color:var(--k)}
+.top .sp{flex:1}
+.top .hint{color:var(--mut);font-size:13px;font-weight:600}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:14px}
+.tabs button{height:36px;padding:0 16px;border-radius:10px;box-shadow:none;background:none;color:var(--ink2);font-weight:600;font-size:14px}
+.tabs button:hover{color:var(--ink);background:rgba(255,253,248,.6);box-shadow:none}
+.tabs button.on{background:var(--paper);color:var(--k);box-shadow:var(--sh)}
+main{display:grid;grid-template-columns:360px minmax(0,1fr);gap:24px;padding:0 32px 32px;align-items:start}
+main[hidden]{display:none!important}
+.tabs[hidden]{display:none!important}
+#ctrl,.ctrl{background:var(--paper);border-radius:22px;box-shadow:var(--sh);padding:22px;overflow:auto;max-height:calc(100vh - 104px)}
+#view,.view{background:var(--paper);border-radius:22px;box-shadow:var(--sh);padding:22px 24px;overflow:auto}
+main#tab4{grid-template-columns:minmax(0,1fr) 380px}
+.stage{position:relative;height:calc(100vh - 104px);min-height:440px;border-radius:28px;overflow:hidden;background:#0b0a0e;box-shadow:var(--sh)}
+#three4{position:absolute;inset:0}
+#info4{position:absolute;left:18px;bottom:14px;color:rgba(255,253,248,.6);font-size:12px;font-weight:600;pointer-events:none}
+.stagebar{position:absolute;right:14px;top:14px;display:flex;gap:6px}
+.stagebar button{background:rgba(255,253,248,.92);box-shadow:none;font-weight:700}
+.drop{position:absolute;inset:12px;border:2.5px dashed #fff;border-radius:22px;display:none;place-items:center;font:700 20px/1.3 var(--disp);color:#fff;background:rgba(0,47,167,.45);pointer-events:none}
+.drop.on{display:grid}
+.sh{font:700 15px/1.2 var(--disp);margin:22px 0 10px;color:var(--ink);display:flex;align-items:baseline;gap:8px}
+.sh small{font:500 12px/1 var(--font);color:var(--mut)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tiles.c3{grid-template-columns:repeat(3,1fr)}
+.tiles button{position:relative;min-height:50px;height:auto;padding:9px 8px;border-radius:14px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line);font-weight:700;font-size:13px;color:var(--ink2);line-height:1.25}
+.tiles button:hover{box-shadow:inset 0 0 0 1.5px var(--line2);background:#F1ECE1;color:var(--ink)}
+.tiles button.on{background:var(--k-t);box-shadow:inset 0 0 0 2px var(--k);color:var(--k)}
+.tiles button small{display:block;font-weight:500;font-size:11px;color:var(--mut);margin-top:2px}
+.tiles button.on small{color:var(--k)}
+button,select{font:inherit;font-size:13px;color:var(--ink);background:var(--paper);border:0;box-shadow:inset 0 0 0 1.5px var(--line2);border-radius:10px;min-height:34px;padding:0 12px;cursor:pointer}
+button:hover{box-shadow:inset 0 0 0 1.5px var(--k);color:var(--k)}
+button.primary{background:var(--k);color:#fff;box-shadow:0 6px 16px -8px rgba(0,47,167,.6);font-weight:700}
+button.primary:hover{background:var(--k-h);color:#fff}
+.roll{width:100%;height:60px;font:700 18px/1 var(--font);background:var(--k);color:#fff;border-radius:18px;box-shadow:0 10px 24px -10px rgba(0,47,167,.6);margin:0 0 14px}
+.roll:hover{background:var(--k-h);color:#fff;box-shadow:0 10px 24px -10px rgba(0,47,167,.6)}
+button.wide{width:100%;height:50px;border-radius:16px;font-size:15px;margin-top:22px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{min-height:30px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink2)}
+.chips button.on{background:var(--k-t);color:var(--k);box-shadow:inset 0 0 0 1.5px var(--k)}
+.hist{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+.hist canvas{width:100%;aspect-ratio:1;border:2px solid transparent;border-radius:8px;cursor:pointer}.hist canvas.on{border-color:var(--k)}
+.tile{width:min(100%,420px);height:auto;aspect-ratio:1;background:#000}
+.strip{width:100%;aspect-ratio:4/1}
+fieldset{border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:16px;margin:0 0 12px;padding:8px 12px 10px;background:var(--paper)}
+legend{color:var(--k);font-weight:700;font-size:13px;padding:0 6px}
+.row{display:grid;grid-template-columns:92px 1fr 44px;gap:8px;align-items:center;margin:4px 0}
+.row label{color:var(--mut);font-size:13px;font-weight:600}
+.row output{font-variant-numeric:tabular-nums;text-align:right;font-size:12px;color:var(--ink2)}
+input[type=range]{width:100%;accent-color:var(--k)}
+input[type=checkbox]{accent-color:var(--k);width:18px;height:18px}
+input[type=color]{width:100%;height:30px;border:0;padding:0;background:none;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+#hist{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:14px}
+#hist canvas{width:100%;aspect-ratio:4/1;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#000}
+#hist canvas.on{border-color:var(--k)}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--mut);font-weight:600;font-size:14px;margin-bottom:10px;list-style:none;display:inline-flex;gap:6px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg)}
+summary:hover{color:var(--k)}
+.seed{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+.seed input{width:110px;background:var(--bg);color:var(--ink);border:0;box-shadow:inset 0 0 0 1.5px var(--line);border-radius:10px;padding:6px 10px;font:inherit}
+.cap{color:var(--mut);font-size:12px;font-weight:600;margin:14px 0 8px}
+canvas{display:block;max-width:100%;image-rendering:auto;border-radius:12px}
+#tex{background:#000;width:100%;aspect-ratio:4/1}
+.pv{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.pv canvas{width:360px;height:360px}
+.opts{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.opts label{color:var(--mut);font-size:13px;font-weight:600;display:flex;gap:6px;align-items:center}
+.opts input[type=color]{width:40px}
+.note{color:var(--mut);font-size:12px;max-width:760px}
+.items{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.items button{min-height:40px;border-radius:12px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line);font-weight:700;font-size:13px;color:var(--ink2);position:relative}
+.items button.on{background:var(--k);color:#fff;box-shadow:0 6px 16px -8px rgba(0,47,167,.6)}
+.items button i{position:absolute;right:7px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.items button i.lit{background:#2fb36a}.items button.on i{box-shadow:0 0 0 1.5px #fff}
+.hist4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 6px;min-height:20px}
+.hist4 canvas{width:100%;aspect-ratio:2.4/1;border-radius:8px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line);border:2px solid transparent}
+.hist4 canvas.on{border-color:var(--k)}
+.hist4 .empty{grid-column:1/-1;color:var(--mut);font-size:12px}
+.pnl{margin-top:6px}
+.qrow{display:grid;grid-template-columns:72px 1fr 40px;gap:8px;align-items:center;margin:8px 0}
+.qrow label{color:var(--ink2);font-weight:700;font-size:13px}
+.qrow output{font-size:12px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums}
+.sw{display:flex;gap:6px}.sw button{flex:1;min-height:32px;font-weight:700}.sw button.on{background:var(--k-t);color:var(--k);box-shadow:inset 0 0 0 2px var(--k)}
+.dpad{display:grid;grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,30px);gap:4px}
+.dpad button{min-height:0;height:30px;padding:0;font-size:14px;font-weight:700}
+.dwrap{display:flex;gap:12px;align-items:center}
+.dwrap small{color:var(--mut);font-size:11px;line-height:1.5}
+.pnl details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.stagebar .sw button{min-height:32px;background:rgba(255,253,248,.92)}
+.stagebar .sw button.on,.stagebar button.on{background:var(--k);color:#fff}
+@media (max-width:900px){.top{flex-wrap:wrap;height:auto;padding:12px 16px;gap:10px}main,main#tab4{grid-template-columns:1fr;padding:0 16px 24px}
+  #ctrl,.ctrl{max-height:none}.stage{height:62vh}.pv canvas{width:100%;height:auto}.top .hint{display:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="mark"><i><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M4 20C10 18 16 12 20 4"/><path d="M8 21c4-1.2 8-4.5 11-9" opacity=".5"/></svg></i>XSXB<b>-Slash</b></div><nav class="tabs" hidden><button data-tab="4" class="on">刀光</button><button data-tab="1">主体形状</button><button data-tab="2">溶解遮罩</button><button data-tab="3">高光</button></nav><span class="sp"></span><span class="hint">空格 = 随机当前选项 · 拖 glb 进画面换武器</span></header>
+<main id="tab1" hidden>
+<section id="ctrl">
+  <button id="roll" class="roll">🎲 随机一个</button>
+  <div class="cap" style="margin-top:0">形状预设（选了以后 🎲 只在这类里随机）</div>
+  <div class="chips shapePre"></div>
+  <div class="btns"><button class="primary" id="png">导出 PNG</button><button id="json">导出参数</button><button id="link">复制链接</button></div>
+  <div class="cap" style="margin-top:4px">最近几次（点一下回到那张）</div>
+  <div id="hist"></div>
+  <details id="adv"><summary>高级参数</summary>
+  <div class="seed"><span style="color:var(--dim)">种子</span><input id="seed" type="number" value="1111"><button id="reset">恢复默认</button></div>
+  <div id="groups"></div>
+  </details>
+</section>
+<section id="view">
+  <div class="cap">贴图（U 向右 = 从刀到尾；外侧边见「外侧在下」）</div>
+  <canvas id="tex" width="1024" height="256"></canvas>
+  <div class="cap">贴到条带上的效果</div>
+  <div class="opts">
+    <label>背景 <select id="bg"><option value="#0a090d">深</option><option value="#6e5a5e" selected>中</option><option value="#cfc6bd">浅</option></select></label>
+    <label>混合 <select id="blend"><option value="ink" selected>半透明墨</option><option value="glow">加色发光</option></select></label>
+    <label>颜色 <input id="col" type="color" value="#060608"></label>
+    <label>不透明度 <input id="op" type="range" min="0" max="1" step=".01" value=".9" style="width:90px"></label>
+  </div>
+  <div class="pv"><canvas id="fan" width="360" height="360"></canvas><canvas id="fan2" width="360" height="360"></canvas></div>
+  <p class="note">左：一次完整挥击（头在右上，越往左下越老）；右：同一条带随年龄收窄后的样子（材质里常见的「取样窗口向外侧收」）。主体图本身只管形状，碎裂交给遮罩 / 溶解图相乘。</p>
+</section>
+</main>
+<script>
+// ---------- parameters ----------
+const P=[
+ ['结构',[
+  ['strands','股数',20,400,1,70],
+  ['clump','聚团',0,1,.01,.55],
+  ['clusters','团数',1,12,1,5],
+  ['outerDensity','外侧更密',0,1,.01,.4],
+ ]],
+ ['粗细与长度',[
+  ['width','粗细',.002,.06,.001,.012],
+  ['widthVar','粗细变化',0,1.5,.01,.7],
+  ['lenIn','内侧长度',.05,.9,.01,.3],
+  ['lenOut','外侧长度',.3,.97,.01,.9],
+  ['power','退缩曲线',.3,4,.01,1.3],
+  ['jitter','长度随机',0,.4,.005,.12],
+  ['lobes','扇贝数',0,8,1,3],
+  ['lobeAmp','扇贝深度',0,.3,.005,.07],
+ ]],
+ ['头端与尖',[
+  ['headStart','头端位置',0,.2,.002,.01],
+  ['headWave','头端波浪',0,.08,.002,.006],
+  ['headSoft','头端柔和',.002,.2,.001,.012],
+  ['headMargin','头端留白',0,.1,.001,.002],
+  ['taper','收尖',0,1,.01,.75],
+  ['tipPow','尖的长度',.3,4,.05,1.6],
+  ['drift','倾斜随机',0,.25,.005,.04],
+  ['wobble','轻微起伏',0,.03,.001,.004],
+ ]],
+ ['明暗',[
+  ['intVar','亮度变化',0,1,.01,.6],
+  ['tailFade','往尾变淡',0,3,.05,.9],
+  ['gain','浓度',.2,6,.05,1.3],
+  ['rim','外沿亮线',0,1.5,.01,.8],
+  ['rimLen','外沿长度',.3,.98,.01,.94],
+  ['rimWidth','外沿粗细',.003,.04,.001,.01],
+ ]],
+ ['模糊（两层叠加）',[
+  ['bigU','大模糊 横',0,40,.5,14],
+  ['bigV','大模糊 竖',0,12,.25,2.5],
+  ['smallU','小模糊 横',0,12,.25,2.5],
+  ['smallV','小模糊 竖',0,6,.25,.75],
+  ['mix','大模糊占比',0,1,.01,.5],
+ ]],
+ ['输出',[
+  ['margin','四边留白',.01,.15,.005,.04],
+ ]],
+];
+const DEF={};P.forEach(([,g])=>g.forEach(r=>DEF[r[0]]=r[5]));
+let S=Object.assign({seed:1111,outerBottom:1,size:1024},DEF);
+// ---------- UI ----------
+const groups=document.getElementById('groups');
+P.forEach(([name,rows])=>{
+  const f=document.createElement('fieldset');f.innerHTML='<legend>'+name+'</legend>';
+  rows.forEach(([k,label,mn,mx,st])=>{
+    const d=document.createElement('div');d.className='row';
+    d.innerHTML=`<label for="p_${k}">${label}</label><input id="p_${k}" type="range" min="${mn}" max="${mx}" step="${st}"><output id="o_${k}"></output>`;
+    f.appendChild(d);
+  });
+  if(name==='输出'){
+    const d=document.createElement('div');d.className='row';
+    d.innerHTML='<label>外侧在下</label><input id="p_outerBottom" type="checkbox" style="justify-self:start;accent-color:var(--acc)"><span></span>';f.appendChild(d);
+    const e=document.createElement('div');e.className='row';
+    e.innerHTML='<label>尺寸</label><select id="p_size"><option value="512">512×128</option><option value="1024">1024×256</option><option value="2048">2048×512</option></select><span></span>';f.appendChild(e);
+  }
+  groups.appendChild(f);
+});
+const meta={};P.forEach(([,g])=>g.forEach(r=>meta[r[0]]=r));
+function syncUI(){
+  for(const k in DEF){const el=document.getElementById('p_'+k);el.value=S[k];document.getElementById('o_'+k).textContent=fmt(S[k],meta[k][4]);}
+  document.getElementById('p_outerBottom').checked=!!S.outerBottom;document.getElementById('p_size').value=S.size;document.getElementById('seed').value=S.seed;
+}
+function fmt(v,st){return st>=1?String(Math.round(v)):(+v).toFixed(st<.01?3:2)}
+for(const k in DEF)document.getElementById('p_'+k).addEventListener('input',e=>{S[k]=+e.target.value;document.getElementById('o_'+k).textContent=fmt(S[k],meta[k][4]);schedule();});
+document.getElementById('p_outerBottom').addEventListener('change',e=>{S.outerBottom=e.target.checked?1:0;schedule();});
+document.getElementById('p_size').addEventListener('change',e=>{S.size=+e.target.value;schedule();});
+document.getElementById('seed').addEventListener('change',e=>{S.seed=Math.round(+e.target.value)||0;schedule();});
+document.getElementById('reset').onclick=()=>{S=Object.assign({seed:S.seed,outerBottom:1,size:S.size},DEF);syncUI();schedule();};
+// Reasonable ranges for one click: every roll picks all of these at random (blur / margin stay as set).
+const RANGE={strands:[35,90],clump:[.3,.75],clusters:[3,8],outerDensity:[.2,.6],width:[.008,.02],widthVar:[.4,1],
+  lenIn:[.15,.45],lenOut:[.82,.95],power:[.8,2.2],jitter:[.05,.2],lobes:[2,5],lobeAmp:[.03,.12],headStart:[0,.02],
+  headWave:[.002,.01],headSoft:[.006,.02],taper:[.55,.9],tipPow:[1,2.5],drift:[.01,.06],wobble:[.001,.006],intVar:[.4,.75],
+  tailFade:[.5,1.4],gain:[.8,1.4],rim:[.5,1],rimLen:[.88,.96],rimWidth:[.007,.014]};
+const HIST=[];let histOn=-1;
+function roll(){
+  const r=Math.random;
+  for(const k in RANGE){const[a,b]=RANGE[k];let v=a+(b-a)*r();S[k]=meta[k][4]>=1?Math.round(v):v;}
+  if(shapeLock)Object.assign(S,shapeLock);
+  S.seed=Math.floor(r()*1e6);syncUI();generate();drawTex();drawFans();saveHash();pushHist();
+}
+function pushHist(){
+  const c=document.createElement('canvas');c.width=256;c.height=64;c.getContext('2d').drawImage(document.getElementById('tex'),0,0,256,64);
+  HIST.unshift({S:JSON.parse(JSON.stringify(S)),c});if(HIST.length>8)HIST.pop();histOn=0;showHist();
+}
+function showHist(){
+  const h=document.getElementById('hist');h.innerHTML='';
+  HIST.forEach((e,i)=>{e.c.className=i===histOn?'on':'';e.c.onclick=()=>{S=JSON.parse(JSON.stringify(e.S));histOn=i;syncUI();schedule();showHist();};h.appendChild(e.c);});
+}
+document.getElementById('roll').onclick=roll;
+// shape presets: overrides applied on top of each random roll (structure only)
+const SHAPE_PRE=[['默认',null],['细密丝',{strands:220,width:.004,widthVar:.5,clump:.15}],['粗团块',{strands:26,width:.045,clump:.85,clusters:3}],
+  ['短尾',{lenIn:.08,lenOut:.45,tailFade:2.2}],['均匀条',{lenIn:.9,lenOut:.97,tailFade:0,taper:0,jitter:0,power:1}],['云团',{strands:18,width:.07,clump:.95,clusters:2}]];
+var shapeLock=null;
+window.BTG_shapePreset=i=>{shapeLock=SHAPE_PRE[i][1];document.querySelectorAll('.shapePre').forEach(box=>[...box.children].forEach((c,j)=>c.classList.toggle('on',j===i)));roll();};
+window.BTG_fillShapePre=()=>document.querySelectorAll('.shapePre').forEach(box=>{if(box.children.length)return;SHAPE_PRE.forEach(([n],i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>window.BTG_shapePreset(i);box.appendChild(b);if(!i)b.classList.add('on');});});
+window.BTG_fillShapePre();
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();roll();}});
+['bg','blend','col','op'].forEach(id=>document.getElementById(id).addEventListener('input',()=>drawFans()));
+// ---------- generator ----------
+function rng(seed){let a=seed>>>0||1;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(R){let u=0,v=0;while(!u)u=R();v=R();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2831853*v);}
+const sm=t=>{t=Math.min(1,Math.max(0,t));return t*t*(3-2*t)};
+let TEX=null,TW=1024,TH=256;
+function generate(){
+  const W=S.size,H=W/4;TW=W;TH=H;
+  const R=rng(S.seed*2654435761+7);
+  const acc=new Float32Array(W*H);
+  const m=S.margin;
+  const lobePh=R()*6.28,headPh=R()*6.28;
+  const centres=[];for(let i=0;i<S.clusters;i++)centres.push(R());
+  const sw=Math.max(.5,S.width*H);                      // strand half-width (px across)
+  const strand=(t,len,wpx,inten,start,slope,wob,wobF,wobP,isRim)=>{
+    // t: 0 inner .. 1 outer ; drawn as a horizontal band with a pointed, fading tip
+    const v0=m+(S.outerBottom?t:1-t)*(1-2*m);
+    const u0=Math.floor(start*W),u1=Math.min(W-1,Math.ceil(len*W));
+    for(let x=u0;x<=u1;x++){
+      const u=x/W,f=(u-start)/Math.max(1e-3,len-start);
+      if(f<0||f>1)continue;
+      const head=sm((u-start)/S.headSoft);
+      const along=Math.pow(1-f,isRim?.6:.35)*Math.pow(Math.max(0,1-u),S.tailFade*.5);
+      const w=wpx*(1-S.taper*Math.pow(f,S.tipPow))+.35;
+      const vc=(v0+(slope*(u-start)+wob*Math.sin(6.2831853*wobF*u+wobP))*(S.outerBottom?1:-1))*(H-1);
+      const a=inten*head*along;if(a<=1e-4)continue;
+      const y0=Math.max(0,Math.floor(vc-3*w)),y1=Math.min(H-1,Math.ceil(vc+3*w));
+      for(let y=y0;y<=y1;y++){const d=(y-vc)/w;acc[y*W+x]+=a*Math.exp(-.5*d*d);}
+    }
+  };
+  for(let i=0;i<S.strands;i++){
+    let t;
+    if(R()<S.clump){t=centres[Math.floor(R()*centres.length)]+gauss(R)*.035;}else{t=R();}
+    if(R()<S.outerDensity)t=1-Math.pow(1-t,2);           // push toward the outer side
+    t=Math.min(1,Math.max(0,t));
+    let len=S.lenIn+(S.lenOut-S.lenIn)*Math.pow(t,S.power);
+    if(S.lobes>0)len+=S.lobeAmp*Math.abs(Math.sin(Math.PI*S.lobes*t+lobePh))*(1-t);
+    len+=gauss(R)*S.jitter*(.4+.6*(1-t));
+    len=Math.min(.97-m,Math.max(.06,len));
+    const start=S.headStart+S.headWave*Math.sin(t*6.2831853*2.3+headPh)+gauss(R)*S.headWave*.35;
+    const wpx=sw*Math.exp(gauss(R)*S.widthVar*.6);
+    const inten=1-S.intVar*R();
+    strand(t,len,wpx,inten,Math.max(S.headMargin,start),gauss(R)*S.drift*.15,S.wobble*(.5+R()),1+R()*2.5,R()*6.28,false);
+  }
+  if(S.rim>0)strand(.985,S.rimLen,Math.max(.5,S.rimWidth*H*.5),S.rim,Math.max(S.headMargin,S.headStart),0,S.wobble*.3,1.3,headPh,true);
+  // density -> 0..1
+  for(let i=0;i<acc.length;i++)acc[i]=1-Math.exp(-S.gain*acc[i]);
+  const big=blur(acc,W,H,S.bigU*W/1024,S.bigV*W/1024),small=blur(acc,W,H,S.smallU*W/1024,S.smallV*W/1024);
+  const out=new Float32Array(W*H);
+  for(let i=0;i<out.length;i++)out[i]=S.mix*big[i]+(1-S.mix)*small[i];
+  // borders -> 0 (Clamp)
+  const fm=S.margin;
+  for(let y=0;y<H;y++){const fy=sm(y/H/fm)*sm((1-y/H)/fm);for(let x=0;x<W;x++){out[y*W+x]*=fy*(S.headMargin>0?sm(x/W/S.headMargin):1)*sm((1-x/W)/fm);}}
+  // normalise to the 99.5th percentile
+  const sample=[];for(let i=0;i<out.length;i+=7)sample.push(out[i]);sample.sort((a,b)=>a-b);
+  const top=Math.max(1e-4,sample[Math.floor(sample.length*.995)]);
+  for(let i=0;i<out.length;i++)out[i]=Math.min(1,out[i]/top);
+  TEX=out;
+}
+function boxPass(src,dst,W,H,r,horiz){
+  if(r<1){dst.set(src);return;}
+  const n=horiz?W:H,lines=horiz?H:W,inv=1/(2*r+1);
+  for(let l=0;l<lines;l++){
+    const idx=i=>horiz?l*W+i:i*W+l;
+    let s=0;for(let i=-r;i<=r;i++)if(i>=0&&i<n)s+=src[idx(i)];
+    for(let i=0;i<n;i++){dst[idx(i)]=s*inv;const a=i-r,b=i+r+1;if(a>=0)s-=src[idx(a)];if(b<n)s+=src[idx(b)];}
+  }
+}
+function blur(a,W,H,su,sv){
+  let x=new Float32Array(a),y=new Float32Array(a.length);
+  const rad=s=>Math.round((Math.sqrt(12*s*s/3+1)-1)/2);
+  const ru=rad(su),rv=rad(sv);
+  for(let k=0;k<3;k++){boxPass(x,y,W,H,ru,true);[x,y]=[y,x];}
+  for(let k=0;k<3;k++){boxPass(x,y,W,H,rv,false);[x,y]=[y,x];}
+  return x;
+}
+// ---------- drawing ----------
+function drawTex(){
+  const c=document.getElementById('tex');c.width=TW;c.height=TH;
+  const ctx=c.getContext('2d'),im=ctx.createImageData(TW,TH);
+  for(let i=0;i<TEX.length;i++){const g=Math.round(TEX[i]*255);im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=g;im.data[i*4+3]=255;}
+  ctx.putImageData(im,0,0);
+  window.BTG_onTex&&window.BTG_onTex('shape');
+}
+function hex(h){return[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255)}
+const lin=c=>Math.pow(c,2.2),srgb=c=>Math.pow(Math.max(0,Math.min(1,c)),1/2.2);
+function sampleTex(u,v){ // bilinear, clamp; v 0 inner .. 1 outer
+  const vv=S.outerBottom?v:1-v;
+  const x=Math.min(TW-1.001,Math.max(0,u*(TW-1))),y=Math.min(TH-1.001,Math.max(0,vv*(TH-1)));
+  const x0=x|0,y0=y|0,fx=x-x0,fy=y-y0,i=y0*TW+x0;
+  return (TEX[i]*(1-fx)+TEX[i+1]*fx)*(1-fy)+(TEX[i+TW]*(1-fx)+TEX[i+TW+1]*fx)*fy;
+}
+function drawFan(id,narrow){
+  const c=document.getElementById(id),N=c.width,ctx=c.getContext('2d'),im=ctx.createImageData(N,N);
+  const bg=hex(document.getElementById('bg').value).map(lin),col=hex(document.getElementById('col').value).map(lin);
+  const op=+document.getElementById('op').value,glow=document.getElementById('blend').value==='glow';
+  const cx=N*.06,cy=N*.06,R1=N*.9,R0=N*.25,sweep=150,taper=.35;
+  for(let py=0;py<N;py++)for(let px=0;px<N;px++){
+    let r=bg[0],g=bg[1],b=bg[2];
+    const dx=px-cx,dy=py-cy,rad=Math.hypot(dx,dy);let ang=Math.atan2(dy,dx)*180/Math.PI;
+    // head at the right end of the arc (angle 0), older toward 150 deg
+    const x=(90-ang)/sweep*(90/90);
+    const age=(ang)/90;                       // 0 .. 1 over the quarter we show
+    if(ang>=0&&ang<=90){
+      const a0=1-ang/90;                      // a0 = 1 at the head side
+      const xage=1-a0;
+      const base=R0+(R1-R0)*taper*xage;
+      const v=(rad-base)/(R1-base);
+      if(v>=0&&v<=1){
+        const sv=narrow?1-(1-v)*(1+1.2*xage):v;
+        const t=sv<0?0:sampleTex(xage,sv)*op;
+        if(glow){r+=col[0]*t*2;g+=col[1]*t*2;b+=col[2]*t*2;}
+        else{r=r*(1-t)+col[0]*t;g=g*(1-t)+col[1]*t;b=b*(1-t)+col[2]*t;}
+      }
+    }
+    const o=(py*N+px)*4;im.data[o]=srgb(r)*255;im.data[o+1]=srgb(g)*255;im.data[o+2]=srgb(b)*255;im.data[o+3]=255;
+  }
+  ctx.putImageData(im,0,0);
+}
+function drawFans(){if(TEX){drawFan('fan',false);drawFan('fan2',true);}}
+let pending=false;
+function schedule(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;generate();drawTex();drawFans();saveHash();});}
+// ---------- export / share ----------
+function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+document.getElementById('png').onclick=()=>document.getElementById('tex').toBlob(b=>download(`T_SlashShape_${S.seed}.png`,b),'image/png');
+document.getElementById('json').onclick=()=>download(`T_SlashShape_${S.seed}.json`,new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));
+document.getElementById('link').onclick=()=>{saveHash();navigator.clipboard&&navigator.clipboard.writeText(location.href);};
+function saveHash(){try{history.replaceState(null,'','#'+encodeURIComponent(JSON.stringify(S)));}catch(e){}}
+function loadHash(){try{if(location.hash.length>2)Object.assign(S,JSON.parse(decodeURIComponent(location.hash.slice(1))));}catch(e){}}
+loadHash();syncUI();if(location.hash.length>2){generate();drawTex();drawFans();pushHist();}else roll();
+</script>
+<main id="tab2" hidden>
+<section id="ctrl2" class="ctrl">
+  <button id="roll2" class="roll">🎲 随机一个</button>
+  <div class="cap" style="margin-top:0">样式（点选 = 只在这个样式里随机；「全部」= 每次随机换样式）</div>
+  <div id="styles" class="chips"></div>
+  <div class="btns"><button class="primary" id="png2">导出 PNG</button><button id="json2">导出参数</button></div>
+  <div class="cap">最近几次（点一下回到那张）</div>
+  <div id="hist2" class="hist sq"></div>
+  <details><summary>高级参数</summary>
+    <div class="seed"><span style="color:var(--dim)">种子</span><input id="seed2" type="number"><span style="color:var(--dim)">尺寸</span>
+      <select id="size2"><option value="256">256</option><option value="512" selected>512</option><option value="1024">1024</option></select></div>
+    <div id="groups2"></div>
+    <div class="row"><label>直方图均衡</label><input id="eq2" type="checkbox" checked style="justify-self:start;accent-color:var(--acc)"><span></span></div>
+  </details>
+</section>
+<section class="view">
+  <div class="cap">2×2 平铺（检查接缝；整张必须四方连续）</div>
+  <canvas id="tile2" width="512" height="512" class="tile"></canvas>
+  <div class="cap">溶解效果（主体图 = 第一页当前那张；遮罩沿条带平铺并滑动；门槛随年龄升高，暗处先消失）</div>
+  <canvas id="dis2" width="1024" height="256" class="strip"></canvas>
+  <div class="opts">
+    <label>溶解进度 <input id="prog2" type="range" min="0" max="1" step=".005" value=".35" style="width:160px"></label>
+    <button id="play2">▶ 播放</button>
+    <label>边缘宽 <input id="edge2" type="range" min="0" max=".25" step=".005" value=".06" style="width:90px"></label>
+    <label>边缘色 <input id="ecol2" type="color" value="#c99a45"></label>
+    <label>平铺次数 <input id="rep2" type="range" min="1" max="8" step="1" value="3" style="width:80px"></label>
+    <label>背景 <select id="bg2"><option value="#0a090d">深</option><option value="#6e5a5e" selected>中</option><option value="#cfc6bd">浅</option></select></label>
+  </div>
+  <p class="note">遮罩 / 溶解图都要无缝平铺（Wrap），在材质里配 Panner 滑动。均衡后亮度分布均匀：门槛从 0 涨到 1 时，消失的面积也均匀增长。</p>
+</section>
+</main>
+<script>
+// ===================== ② 遮罩 / 溶解图生成器 =====================
+(()=>{
+const $=id=>document.getElementById(id);
+// ---------- periodic noise (everything wraps on the integer lattice -> tileable) ----------
+function hash(x,y,s){let h=(x*374761393+y*668265263+s*1442695041)|0;h=Math.imul(h^h>>>13,1274126177);h^=h>>>16;return (h>>>0)/4294967296;}
+function grad(ix,iy,s){const a=hash(ix,iy,s)*6.2831853;return[Math.cos(a),Math.sin(a)];}
+const fade=t=>t*t*t*(t*(t*6-15)+10);
+function perlin(x,y,px,py,s){            // x in [0,px), lattice period px,py
+  const x0=Math.floor(x),y0=Math.floor(y),fx=x-x0,fy=y-y0;
+  const w=(i,j)=>{const g=grad(((x0+i)%px+px)%px,((y0+j)%py+py)%py,s);return g[0]*(fx-i)+g[1]*(fy-j);};
+  const u=fade(fx),v=fade(fy);
+  return (w(0,0)*(1-u)+w(1,0)*u)*(1-v)+(w(0,1)*(1-u)+w(1,1)*u)*v;   // ~[-0.7,0.7]
+}
+function fbm(u,v,cx,cy,oct,s,ridge){     // u,v in [0,1); cx,cy = base cells
+  let a=0,amp=1,norm=0;
+  for(let o=0;o<oct;o++){const f=1<<o;let n=perlin(u*cx*f,v*cy*f,cx*f,cy*f,s+o*97);
+    if(ridge)n=1-Math.abs(n)*1.6;a+=n*amp;norm+=amp;amp*=.5;}
+  return a/norm;
+}
+function worley(u,v,cx,cy,s,jit){         // periodic F1,F2 and the id of the nearest cell
+  const x=u*cx,y=v*cy,ix=Math.floor(x),iy=Math.floor(y);let f1=9,f2=9,id=0;
+  for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){
+    const gx=ix+i,gy=iy+j,wx=((gx%cx)+cx)%cx,wy=((gy%cy)+cy)%cy;
+    const px=gx+.5+(hash(wx,wy,s)-.5)*jit,py=gy+.5+(hash(wx,wy,s+7)-.5)*jit;
+    const d=Math.hypot(x-px,y-py);
+    if(d<f1){f2=f1;f1=d;id=hash(wx,wy,s+13);}else if(d<f2)f2=d;
+  }
+  return[f1,f2,id];
+}
+// ---------- styles: name, params (key,label,min,max,step,[randLo,randHi])  ----------
+const C=(k,l,mn,mx,st,lo,hi)=>({k,l,mn,mx,st,lo,hi});
+const STYLES=[
+ {id:'smoke',name:'云雾',p:[C('cells','尺度',1,16,1,2,6),C('oct','层数',1,7,1,4,6),C('warp','扭曲',0,2,.01,.3,1.1),C('stretch','横向拉伸',.25,4,.05,1,2.2)],
+  f:(u,v,P,s)=>{const w=P.warp*fbm(u,v,P.cells,P.cells,3,s+500);return fbm((u+w*.25)%1+1,(v+w*.25)%1+1,P.cells,Math.max(1,Math.round(P.cells*P.stretch)),P.oct,s);}},
+ {id:'crack',name:'裂纹',p:[C('cells','碎块数',2,24,1,5,12),C('width','裂缝宽',.01,.4,.005,.06,.18),C('rough','裂缝粗糙',0,1,.01,.2,.6),C('stretch','横向拉伸',.25,4,.05,1,2)],
+  f:(u,v,P,s)=>{const cy=Math.max(1,Math.round(P.cells*P.stretch));const n=fbm(u,v,4,4,4,s+200)*P.rough*.3;
+    const[f1,f2,id]=worley((u+n+1)%1,(v+n+1)%1,P.cells,cy,s,1);const e=Math.min(1,(f2-f1)/P.width);return e*.75+id*.25-.5;}},
+ {id:'streak',name:'风丝',p:[C('cellsU','横向尺度',1,8,1,1,3),C('cellsV','竖向细密',4,64,1,14,40),C('oct','层数',1,6,1,3,5),C('warp','弯曲',0,1,.01,.05,.35)],
+  f:(u,v,P,s)=>{const w=P.warp*fbm(u,v,2,2,2,s+300)*.15;return fbm(u,(v+w+1)%1,P.cellsU,P.cellsV,P.oct,s);}},
+ {id:'ink',name:'墨迹',p:[C('cells','尺度',1,10,1,2,5),C('warp','扭曲',0,2,.01,.6,1.5),C('blob','团块感',0,1,.01,.4,.85),C('dots','飞溅点',0,1,.01,.1,.5)],
+  f:(u,v,P,s)=>{const w=P.warp*fbm(u,v,P.cells,P.cells,3,s+400)*.3;let n=fbm((u+w+1)%1,(v-w+1)%1,P.cells,P.cells,5,s);
+    n=n*(1-P.blob)+Math.tanh(n*6)*.5*P.blob;const[f1]=worley(u,v,P.cells*6,P.cells*6,s+9,.9);n+=P.dots*Math.max(0,.35-f1)*1.5;return n;}},
+ {id:'burn',name:'烧蚀',p:[C('cells','尺度',1,12,1,2,6),C('oct','层数',2,7,1,4,6),C('warp','扭曲',0,2,.01,.5,1.4),C('vein','筋络',0,1,.01,.4,.9)],
+  f:(u,v,P,s)=>{const w=P.warp*fbm(u,v,P.cells,P.cells,3,s+600)*.25;const uu=(u+w+1)%1,vv=(v+w+1)%1;
+    return fbm(uu,vv,P.cells,P.cells,P.oct,s,true)*P.vein+fbm(uu,vv,P.cells,P.cells,P.oct,s+1)*(1-P.vein);}},
+ {id:'dry',name:'干笔',p:[C('cellsV','笔丝数',8,96,1,24,64),C('gap','飞白',0,1,.01,.3,.7),C('cellsU','横向尺度',1,6,1,1,3),C('oct','层数',1,5,1,2,4)],
+  f:(u,v,P,s)=>{const fib=fbm(u,v,P.cellsU,P.cellsV,P.oct,s);const big=fbm(u,v,P.cellsU,Math.max(1,P.cellsV>>3),3,s+700);
+    return fib*.6+big*.4-P.gap*.3*Math.abs(fbm(u,v,P.cellsU*2,P.cellsV,2,s+800));}},
+ {id:'holes',name:'孔洞',p:[C('cells','孔数',2,32,1,6,16),C('jit','随机度',0,1,.01,.6,1),C('soft','边缘柔和',.05,1,.01,.2,.6),C('mix','叠云雾',0,1,.01,.2,.5)],
+  f:(u,v,P,s)=>{const[f1]=worley(u,v,P.cells,P.cells,s,P.jit);return Math.min(1,f1/P.soft)*(1-P.mix)+fbm(u,v,3,3,4,s+900)*P.mix;}},
+ {id:'shard',name:'碎块',p:[C('cells','碎块数',2,24,1,4,12),C('stretch','横向拉伸',.25,4,.05,1,2.5),C('grain','颗粒',0,1,.01,.1,.4),C('edge','边线',0,1,.01,.1,.5)],
+  f:(u,v,P,s)=>{const cy=Math.max(1,Math.round(P.cells*P.stretch));const[f1,f2,id]=worley(u,v,P.cells,cy,s+50,1);
+    return id+P.grain*fbm(u,v,8,8,3,s+60)-P.edge*Math.max(0,.15-(f2-f1))*4;}},
+];
+let style=null,lockStyle=null,M=null,MS=512;
+const Q={seed:1,size:512,eq:1,style:'smoke',p:{}};
+// ---------- UI ----------
+const chips=$('styles');
+[{id:null,name:'全部'}].concat(STYLES).forEach(st=>{const b=document.createElement('button');b.textContent=st.name;b.dataset.id=st.id||'';
+  b.onclick=()=>{lockStyle=st.id;[...chips.children].forEach(c=>c.classList.toggle('on',c===b));if(st.id){Q.style=st.id;randomParams();Q.seed=Math.floor(Math.random()*1e6);build();}};
+  chips.appendChild(b);});
+chips.children[0].classList.add('on');
+function curStyle(){return STYLES.find(s=>s.id===Q.style);}
+function buildSliders(){
+  const g=$('groups2');g.innerHTML='';const st=curStyle();
+  st.p.forEach(c=>{const d=document.createElement('div');d.className='row';
+    d.innerHTML=`<label>${c.l}</label><input type="range" min="${c.mn}" max="${c.mx}" step="${c.st}" value="${Q.p[c.k]}"><output>${fmtv(Q.p[c.k],c.st)}</output>`;
+    const inp=d.querySelector('input'),out=d.querySelector('output');
+    inp.oninput=()=>{Q.p[c.k]=+inp.value;out.textContent=fmtv(Q.p[c.k],c.st);sched();};g.appendChild(d);});
+  $('seed2').value=Q.seed;$('size2').value=Q.size;$('eq2').checked=!!Q.eq;
+}
+const fmtv=(v,st)=>st>=1?String(Math.round(v)):(+v).toFixed(2);
+$('seed2').onchange=e=>{Q.seed=Math.round(+e.target.value)||0;sched();};
+$('size2').onchange=e=>{Q.size=+e.target.value;sched();};
+$('eq2').onchange=e=>{Q.eq=e.target.checked?1:0;sched();};
+function randomParams(){const st=curStyle();Q.p={};st.p.forEach(c=>{let v=c.lo+(c.hi-c.lo)*Math.random();Q.p[c.k]=c.st>=1?Math.round(v):v;});}
+// ---------- generate ----------
+function gen(){
+  const N=Q.size,st=curStyle(),out=new Float32Array(N*N),s=Q.seed%100000;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++)out[y*N+x]=st.f(x/N,y/N,Q.p,s);
+  if(Q.eq){const idx=new Uint32Array(N*N);for(let i=0;i<idx.length;i++)idx[i]=i;idx.sort((a,b)=>out[a]-out[b]);
+    const r=new Float32Array(N*N);for(let i=0;i<idx.length;i++)r[idx[i]]=i/(idx.length-1);M=r;}
+  else{let mn=1e9,mx=-1e9;for(const v of out){if(v<mn)mn=v;if(v>mx)mx=v;}for(let i=0;i<out.length;i++)out[i]=(out[i]-mn)/(mx-mn||1);M=out;}
+  MS=N;window.BTG_M={M,MS};window.BTG_Q=Q;window.BTG_onTex&&window.BTG_onTex('mask');
+}
+function drawTile(){
+  const c=$('tile2'),N=MS;c.width=N*2;c.height=N*2;const ctx=c.getContext('2d'),im=ctx.createImageData(N,N);
+  for(let i=0;i<M.length;i++){const g=M[i]*255;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=g;im.data[i*4+3]=255;}
+  for(let j=0;j<2;j++)for(let i=0;i<2;i++)ctx.putImageData(im,i*N,j*N);
+}
+const hx=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255),L=c=>Math.pow(c,2.2),G=c=>Math.pow(Math.max(0,Math.min(1,c)),1/2.2)*255;
+function drawDissolve(){
+  if(!M)return;const c=$('dis2'),W=c.width,H=c.height,ctx=c.getContext('2d'),im=ctx.createImageData(W,H);
+  const prog=+$('prog2').value,ew=+$('edge2').value,ec=hx($('ecol2').value).map(L),bg=hx($('bg2').value).map(L),rep=+$('rep2').value;
+  const ink=[.006,.006,.008],pan=prog*.35;
+  const hasTex=typeof TEX!=='undefined'&&TEX;
+  for(let y=0;y<H;y++){const v=y/(H-1);for(let x=0;x<W;x++){const u=x/(W-1);
+    let shp=1;if(hasTex){const tx=Math.min(TW-1,Math.floor(u*(TW-1))),ty=Math.min(TH-1,Math.floor(v*(TH-1)));shp=TEX[ty*TW+tx];}
+    const mu=((u*rep+pan)%1+1)%1,mv=v;const mx=Math.min(MS-1,Math.floor(mu*MS)),my=Math.min(MS-1,Math.floor(mv*MS));
+    const m=M[my*MS+mx];
+    const th=-.1+u*.9+prog*1.1-.35;                    // threshold rises with age (u) and with the progress slider
+    const k=Math.max(0,Math.min(1,(m-th)*8));const edge=ew>0?Math.max(0,Math.min(1,1-(m-th)/ew))*k:0;
+    const a=shp*k;let r=bg[0]*(1-a)+ink[0]*a,g=bg[1]*(1-a)+ink[1]*a,b=bg[2]*(1-a)+ink[2]*a;
+    const e=edge*shp;r=r*(1-e)+ec[0]*e;g=g*(1-e)+ec[1]*e;b=b*(1-e)+ec[2]*e;
+    const o=(y*W+x)*4;im.data[o]=G(r);im.data[o+1]=G(g);im.data[o+2]=G(b);im.data[o+3]=255;}}
+  ctx.putImageData(im,0,0);
+}
+const H2=[];let h2on=-1;
+function pushH(){const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d').drawImage($('tile2'),0,0,MS,MS,0,0,96,96);
+  c.title=curStyle().name;H2.unshift({Q:JSON.parse(JSON.stringify(Q)),c});if(H2.length>8)H2.pop();h2on=0;showH();}
+function showH(){const h=$('hist2');h.innerHTML='';H2.forEach((e,i)=>{e.c.className=i===h2on?'on':'';
+  e.c.onclick=()=>{Object.assign(Q,JSON.parse(JSON.stringify(e.Q)));h2on=i;buildSliders();build(false);showH();};h.appendChild(e.c);});}
+function build(push=true){gen();drawTile();drawDissolve();if(push)pushH();}
+let p2=false;function sched(){if(p2)return;p2=true;requestAnimationFrame(()=>{p2=false;build(false);});}
+function roll2(){Q.style=lockStyle||STYLES[Math.floor(Math.random()*STYLES.length)].id;randomParams();Q.seed=Math.floor(Math.random()*1e6);buildSliders();build();}
+$('roll2').onclick=roll2;
+['prog2','edge2','ecol2','rep2','bg2'].forEach(id=>$(id).addEventListener('input',drawDissolve));
+let playing=null;$('play2').onclick=()=>{if(playing){cancelAnimationFrame(playing);playing=null;$('play2').textContent='▶ 播放';return;}
+  $('play2').textContent='⏸ 暂停';const t0=performance.now();const step=t=>{$('prog2').value=((t-t0)/2500)%1;drawDissolve();playing=requestAnimationFrame(step);};playing=requestAnimationFrame(step);};
+const dl=(n,b)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);};
+$('png2').onclick=()=>{const c=document.createElement('canvas');c.width=c.height=MS;c.getContext('2d').drawImage($('tile2'),0,0,MS,MS,0,0,MS,MS);c.toBlob(b=>dl(`T_SlashMask_${Q.style}_${Q.seed}.png`,b),'image/png');};
+$('json2').onclick=()=>dl(`T_SlashMask_${Q.style}_${Q.seed}.json`,new Blob([JSON.stringify(Q,null,1)],{type:'application/json'}));
+// ---------- tabs + space key ----------
+window.BTG_mask=(st)=>{const keep=lockStyle;lockStyle=st;roll2();lockStyle=keep;};window.BTG_roll2=roll2;window.BTG_STYLES=STYLES.map(x=>x.id);
+window.BTG_tab=1;window.BTG_ensureMask=()=>{if(!M)roll2();};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  const t=+b.dataset.tab;window.BTG_tab=t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('main[id^=tab]').forEach(m=>m.hidden=m.id!=='tab'+t);if(t===2){if(!M)roll2();else drawDissolve();}window.dispatchEvent(new CustomEvent('btg-tab',{detail:t}));
+});
+window.addEventListener('keydown',e=>{if(window.BTG_tab===2&&e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();e.stopImmediatePropagation();roll2();}},true);
+})();
+</script>
+
+<main id="tab3" hidden>
+<section class="ctrl">
+  <button id="roll3" class="roll">🎲 随机一个</button>
+  <div class="cap" style="margin-top:0">高光预设</div>
+  <div class="chips hlPre"></div>
+  <div class="btns"><button class="primary" id="png3">导出 PNG</button></div>
+  <p class="note">高光图 / 亮度图：和主体形状图同一种规格（Clamp，沿条带拉伸一次），但只留靠外沿的亮芯和几道细亮丝。在预览里当「亮度」叠在主体上，配加色或 HDR 才会发亮。</p>
+</section>
+<section class="view">
+  <div class="cap">高光图（下沿 = 外侧）</div>
+  <canvas id="hl3" width="1024" height="256" class="strip" style="background:#000"></canvas>
+</section>
+</main>
+
+<main id="tab4" hidden>
+<section class="stage" id="stage4">
+  <div id="three4"></div>
+  <div id="info4"></div>
+  <div class="stagebar" id="bar4"><div class="sw" id="bgsw4"><button data-bg="light">亮棋盘</button><button data-bg="dark">暗棋盘</button></div><button id="fog4" title="体积雾：发光部分周围起一层光晕，远处有雾">体积雾</button><button id="play4" title="暂停 / 继续">⏸</button></div>
+  <div class="drop" id="drop4">松手：加载这个 glb 当武器</div>
+</section>
+<section class="ctrl" id="ctrl4">
+  <div class="items" id="items4"></div>
+  <button id="rand4" class="roll">🎲 随机</button>
+  <div class="cap" style="margin:4px 0 6px">最近几次（点一下换回去）</div>
+  <div class="hist4" id="hist4"></div>
+  <div id="panels4"></div>
+  <button class="primary wide" id="bundle4" title="贴图+配方+预览图，一个 zip；照 docs/ 或 skill 装进 Unity / Godot / UE">导出整套 zip（进引擎用）</button>
+  <div id="legacy4" hidden>
+    <button id="rollAll4"></button><div id="presets4"></div><div id="fx4"></div><fieldset id="fxp4"></fieldset><div id="maskPre4"></div><details id="more4"></details>
+    <div id="layers4"></div><button id="add4"></button>
+    <div class="tiles" id="weap4"><button id="wDef4" class="on">默认刀<small>1.2 m</small></button><button id="wLoad4">加载 glb…<small>或直接拖进画面</small></button></div>
+    <input type="file" id="wFile4" accept=".glb,.gltf" hidden>
+    <div class="note" id="wInfo4" style="margin-top:8px"></div>
+    <div class="row" id="r_bg4"><label>背景</label><select id="bg4"><option value="#0b0a0e">深</option><option value="#5d5052">中</option><option value="#F3EFE4">米白</option></select><span></span></div>
+    <div class="row" id="r_speed4"><label>播放速度</label><input id="speed4" type="range" min=".05" max="1" step=".05" value=".35"><output id="speed4o"></output></div>
+    <div class="row" id="r_dur4"><label>挥刀快慢</label><input id="dur4" type="range" min=".12" max=".6" step=".01" value=".24"><output id="dur4o"></output></div>
+    <div class="row" id="r_bloom4"><label>泛光强度</label><input id="bloom4" type="range" min="0" max="3" step=".05" value="1"><output id="bloom4o"></output></div>
+    <div class="row" id="r_glow4"><label>刀身发光</label><input id="glow4" type="range" min="0" max="20" step=".5" value="0"><output id="glow4o"></output></div>
+    <div class="row" id="r_pause4"><label>暂停</label><input id="pause4" type="checkbox" style="justify-self:start"><span></span></div>
+    <fieldset id="wp4"><legend>武器微调</legend>
+      <div class="row"><label>翻转方向</label><input id="wFlip4" type="checkbox" style="justify-self:start"><span></span></div>
+      <div class="row"><label>绕轴转</label><input id="wRoll4" type="range" min="0" max="360" step="5" value="0"><output id="wRoll4o"></output></div>
+      <div class="row"><label>缩放</label><input id="wScale4" type="range" min=".2" max="3" step=".05" value="1"><output id="wScale4o"></output></div>
+      <div class="row"><label>刀光内沿</label><input id="wIn4" type="range" min="0" max=".95" step=".01" value=".17"><output id="wIn4o"></output></div>
+      <div class="row"><label>刀光外沿</label><input id="wOut4" type="range" min=".3" max="1.15" step=".01" value="1"><output id="wOut4o"></output></div>
+      <p class="note" style="margin:4px 0 0">内沿 / 外沿 = 沿武器长度的比例（0 = 握把端，1 = 尖端）。刀光宽度按这段长度等比缩放。</p>
+    </fieldset>
+    <fieldset id="pk4"><legend>其它导出</legend>
+      <div class="row"><label>通道打包</label><span style="grid-column:2/4;color:var(--mut);font-size:12px">四个通道各放一张黑白图，合成一张 RGBA</span></div>
+      <div class="row"><label>R</label><select id="pkR"></select><span></span></div>
+      <div class="row"><label>G</label><select id="pkG"></select><span></span></div>
+      <div class="row"><label>B</label><select id="pkB"></select><span></span></div>
+      <div class="row"><label>A</label><select id="pkA"></select><span></span></div>
+      <div class="btns" style="margin-top:6px"><button id="pack4">导出打包 PNG</button><button id="recipe4">导出配方 JSON</button></div>
+    </fieldset>
+  </div>
+</section>
+</main>
+
+<script>
+// ===================== ③ 高光图（复用 ① 的生成器，换一组参数范围） =====================
+(()=>{
+const $=id=>document.getElementById(id);
+window.BTG_HL=null;
+const RANGE_HL={strands:[6,18],clump:[.2,.6],clusters:[2,4],outerDensity:[.85,1],width:[.003,.008],widthVar:[.3,.8],lenIn:[.2,.45],lenOut:[.85,.95],
+  power:[1.5,3],jitter:[.05,.15],lobes:[1,3],lobeAmp:[.02,.06],headStart:[0,.015],headWave:[.002,.006],headSoft:[.006,.02],taper:[.7,.95],tipPow:[1.2,2.5],
+  drift:[0,.02],wobble:[0,.002],intVar:[.3,.7],tailFade:[1,2],gain:[.8,1.4],rim:[1,1.4],rimLen:[.88,.97],rimWidth:[.005,.01]};
+function roll3(){
+  const saveS=S,saveT=TEX,saveW=TW,saveH=TH;
+  S=Object.assign({},S,{bigU:8,bigV:1,smallU:1.5,smallV:.5,mix:.4,size:1024});
+  for(const k in RANGE_HL){const[a,b]=RANGE_HL[k];const v=a+(b-a)*Math.random();S[k]=meta[k][4]>=1?Math.round(v):v;}
+  if(hlLock)Object.assign(S,hlLock);
+  S.seed=Math.floor(Math.random()*1e6);
+  generate();window.BTG_HL={data:TEX,w:TW,h:TH,outerBottom:S.outerBottom};
+  S=saveS;TEX=saveT;TW=saveW;TH=saveH;
+  const c=$('hl3'),w=window.BTG_HL.w,h=window.BTG_HL.h;c.width=w;c.height=h;const ctx=c.getContext('2d'),im=ctx.createImageData(w,h);
+  window.BTG_HL.data.forEach((v,i)=>{const g=v*255;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=g;im.data[i*4+3]=255;});ctx.putImageData(im,0,0);
+  window.BTG_onTex&&window.BTG_onTex('hl');
+}
+window.BTG_roll3=roll3;
+const HL_PRE=[['外沿亮芯',null],['细丝',{strands:30,width:.0025,clump:.2,outerDensity:.6,lenIn:.3}],['宽亮带',{strands:10,width:.012,clump:.7,rim:1.5,rimWidth:.02}],['碎点',{strands:24,lenIn:.05,lenOut:.35,tailFade:2.5}]];
+let hlLock=null;
+window.BTG_hlPreset=i=>{hlLock=HL_PRE[i][1];document.querySelectorAll('.hlPre').forEach(box=>[...box.children].forEach((c,j)=>c.classList.toggle('on',j===i)));roll3();};
+window.BTG_fillHlPre=()=>document.querySelectorAll('.hlPre').forEach(box=>{if(box.children.length)return;HL_PRE.forEach(([n],i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>window.BTG_hlPreset(i);box.appendChild(b);if(!i)b.classList.add('on');});});
+window.BTG_fillHlPre();
+$('roll3').onclick=roll3;
+$('png3').onclick=()=>$('hl3').toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='T_SlashHighlight.png';a.click();},'image/png');
+window.addEventListener('keydown',e=>{if(window.BTG_tab===3&&e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();e.stopImmediatePropagation();roll3();}},true);
+})();
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+// ===================== ④ 预览与叠层（three.js） =====================
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
+const $=id=>document.getElementById(id);
+
+// ---------- textures from the generators (grey -> RGBA8 DataTexture; uv.y = v, 1 = outer edge) ----------
+function greyTex(arr,w,h,outerBottom,wrap,mip){
+  const d=new Uint8Array(w*h*4);
+  for(let r=0;r<h;r++){const y=outerBottom?r:h-1-r;for(let x=0;x<w;x++){const g=Math.round(Math.min(1,Math.max(0,arr[y*w+x]))*255),o=(r*w+x)*4;d[o]=d[o+1]=d[o+2]=g;d[o+3]=255;}}
+  const t=new THREE.DataTexture(d,w,h,THREE.RGBAFormat);t.wrapS=t.wrapT=wrap?THREE.RepeatWrapping:THREE.ClampToEdgeWrapping;
+  t.magFilter=t.minFilter=THREE.LinearFilter;if(mip){t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;}t.needsUpdate=true;return t;
+}
+const white=(()=>{const t=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1,THREE.RGBAFormat);t.needsUpdate=true;return t;})();
+const black=(()=>{const t=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1,THREE.RGBAFormat);t.needsUpdate=true;return t;})();
+const TX={shape:white,mask:white,hl:black};
+// detail / turbulence texture (扰动): tileable value-noise fbm, fixed seed
+const TURB=(()=>{const N=256,d=new Uint8Array(N*N*4);
+  const R=(x,y,s)=>{let h=(x*374761393+y*668265263+s*1442695041)|0;h=Math.imul(h^h>>>13,1274126177);return((h^h>>>16)>>>0)/4294967296;};
+  const vn=(u,v,c,s)=>{const x=u*c,y=v*c,ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+    const a=R(ix%c,iy%c,s),b=R((ix+1)%c,iy%c,s),cc=R(ix%c,(iy+1)%c,s),dd=R((ix+1)%c,(iy+1)%c,s);return a+(b-a)*sx+(cc-a)*sy+(a-b-cc+dd)*sx*sy;};
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){let s=0,amp=.5,c=4;for(let o=0;o<4;o++){s+=vn(x/N,y/N,c,o+3)*amp;amp*=.5;c*=2;}
+    const g=Math.round(Math.min(1,s/.9375)*255),i=(y*N+x)*4;d[i]=d[i+1]=d[i+2]=g;d[i+3]=255;}
+  const t=new THREE.DataTexture(d,N,N,THREE.RGBAFormat);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=t.minFilter=THREE.LinearFilter;t.needsUpdate=true;return t;})();
+function refreshTex(which){
+  if((!which||which==='shape')&&typeof TEX!=='undefined'&&TEX){TX.shape.dispose&&TX.shape!==white&&TX.shape.dispose();TX.shape=greyTex(TEX,TW,TH,S.outerBottom,false);}
+  if((!which||which==='mask')&&window.BTG_M){const m=window.BTG_M;TX.mask!==white&&TX.mask.dispose();TX.mask=greyTex(m.M,m.MS,m.MS,1,true,!REC);}
+  if((!which||which==='hl')&&window.BTG_HL){const h=window.BTG_HL;TX.hl!==black&&TX.hl.dispose();TX.hl=greyTex(h.data,h.w,h.h,h.outerBottom,false);}
+  for(const L of layers)bindTex(L);
+}
+window.BTG_onTex=w=>{if(ready&&!REC)refreshTex(w);};
+const REC=new URLSearchParams(location.search).has('rec');
+
+// ---------- renderer ----------
+const host=$('three4');let ready=false,renderer,scene,camera,controls,composer,bloom,blade,bladeGlow,refrPass,refrRT;
+function init(){
+  renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+  renderer.toneMapping=THREE.NoToneMapping;host.appendChild(renderer.domElement);
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(40,1,.01,50);camera.position.set(.15,.35,3.1);
+  controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,.05,0);controls.update();
+  scene.add(new THREE.HemisphereLight(0xdedad0,0x302c34,1.2));const dl=new THREE.DirectionalLight(0xffffff,1.6);dl.position.set(1,2,2);scene.add(dl);
+  // blade: hilt at the pivot, 0.2..1.2 m along local +X
+  blade=new THREE.Group();scene.add(blade);
+  const steel=new THREE.Mesh(new THREE.BoxGeometry(1,.035,.008),new THREE.MeshStandardMaterial({color:0x2b2a2e,metalness:.6,roughness:.35}));steel.position.x=.7;blade.add(steel);
+  const hilt=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.2,12),new THREE.MeshStandardMaterial({color:0x6b4a22,roughness:.7}));hilt.rotation.z=Math.PI/2;hilt.position.x=.1;blade.add(hilt);
+  bladeGlow=new THREE.Mesh(new THREE.BoxGeometry(1.01,.045,.014),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));bladeGlow.position.x=.7;blade.add(bladeGlow);
+  composer=new EffectComposer(renderer,new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType}));
+  composer.addPass(new RenderPass(scene,camera));
+  refrPass=new ShaderPass(REFR_SHADER);refrPass.enabled=false;composer.addPass(refrPass);   // screen-space refraction under 'refract' layers
+  refrRT=new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType});
+  bloom=new UnrealBloomPass(new THREE.Vector2(1,1),1,.4,1.0);composer.addPass(bloom);   // threshold 1: only HDR > 1 blooms
+  composer.addPass(new OutputPass());
+  new ResizeObserver(resize).observe(host);resize();
+  initParticles();
+  ready=true;refreshTex();applyPreset(PRESETS[0]);requestAnimationFrame(loop);
+  const wq=new URLSearchParams(location.search).get('weapon');if(wq&&!REC)loadWeapon(wq).catch(e=>console.error(e));
+}
+function resize(){const w=host.clientWidth||800,h=host.clientHeight||600;renderer.setSize(w,h);composer.setSize(w,h);   // composer also sizes the bloom pass (with the pixel ratio)
+ 
+  const db=renderer.getDrawingBufferSize(new THREE.Vector2());refrRT.setSize(db.x,db.y);camera.aspect=w/h;camera.updateProjectionMatrix();}
+
+// ---------- swing: blade turns about a tilted axis, eased, alternating direction ----------
+const AX=new THREE.Vector3(.25,1,.35).normalize(),E0=new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,0,1),.25);
+const SW={from:-95,to:85,hold:.55,arm:1};
+function hiltPos(a){const e=(a-SW.from)/(SW.to-SW.from),k=Math.sin(Math.PI*e);return new THREE.Vector3(.16*k,.05*k,.32*(.5-e)).multiplyScalar(SW.arm);}
+function swingAngle(t){                       // degrees + angular speed (deg/s) at time t
+  const dur=+$('dur4').value,per=dur+SW.hold,k=Math.floor(t/per),f=(t-k*per)/dur,dir=k%2?-1:1;
+  const e=f>=1?1:f<=0?0:(f<.5?4*f*f*f:1-Math.pow(-2*f+2,3)/2);
+  const de=f>=1||f<=0?0:(f<.5?12*f*f:3*Math.pow(-2*f+2,2))/dur;
+  const a=SW.from+(SW.to-SW.from)*e,da=(SW.to-SW.from)*de;
+  return dir>0?[a,da,k]:[SW.to+SW.from-a,-da,k];
+}
+const _q=new THREE.Quaternion();
+function bladeDir(deg){_q.setFromAxisAngle(AX,deg*Math.PI/180);return E0.clone().applyQuaternion(_q);}
+
+// ---------- ribbon layer ----------
+const VS=`attribute float aDist,aU;varying vec2 vUv;varying float vDist,vU;void main(){vUv=uv;vDist=aDist;vU=aU;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+const FS=`precision highp float;varying vec2 vUv;varying float vDist,vU;
+uniform sampler2D shapeT,maskT,hlT;uniform vec3 color,edgeColor,hlColor;uniform float time,alpha,hdr,narrow,maskTile,maskPan,maskAmt,erodeAmt,erodeSharp,edgeW,edgeGlow,hlAmt;uniform sampler2D turbT,gnawT;uniform float turbAmt,turbTile,ageAmt,gnawAmt,gnawPan,gnawTile,gnawBlur,maskBlur,hlAlpha;uniform vec2 shapeOff,hlOff,maskOff,gnawOff;uniform vec3 oldTint;uniform int additive,dbg;
+void main(){float x=vUv.x,v=vUv.y,xu=vU;float sv=1.-(1.-v)*(1.+narrow*x);
+ if(turbAmt>0.){float tn=texture2D(turbT,vec2(vDist*turbTile+time*.5,v*1.7+x*.4)).r-.5;sv+=tn*turbAmt;xu=clamp(xu+tn*turbAmt*.3,0.,1.);}
+ float shp=sv<0.?0.:texture2D(shapeT,vec2(xu,sv)+shapeOff).r;
+ float m=texture2D(maskT,vec2(vDist*maskTile+time*maskPan,v*.8+x*.15)+maskOff,maskBlur).r;
+ float det=mix(1.,m*1.6,maskAmt);
+ float thr=-.12+pow(x,1.5)*erodeAmt+(1.-v)*.1;float mg=m-thr;float keep=clamp(mg*erodeSharp,0.,1.);float edge=clamp(1.-mg/max(edgeW,1e-3),0.,1.)*keep;
+ float hl=sv<0.?0.:texture2D(hlT,vec2(xu,sv)+hlOff).r;
+ float gk=1.;if(gnawAmt>0.){float gw=texture2D(gnawT,vec2(vDist*gnawTile+time*gnawPan,v*.8)+gnawOff,gnawBlur).r;float gs=.04+gnawBlur*.03;gk=smoothstep(gnawAmt-gs,gnawAmt+gs,gw);}
+ float a=clamp(shp*det*keep*alpha*smoothstep(0.,.005,xu),0.,1.);
+ if(hlAlpha>0.)a=max(a,clamp(hl*hlAmt,0.,1.)*keep*alpha*hlAlpha*smoothstep(0.,.005,xu));
+ a*=gk;
+ vec3 c=color*hdr+edgeColor*edge*edgeGlow+hlColor*hl*hlAmt;
+ c+=(oldTint-color)*hdr*smoothstep(.2,.95,x)*ageAmt;
+ if(dbg==1){gl_FragColor=vec4(xu,v,0.,1.);return;}if(dbg==2){gl_FragColor=vec4(color,alpha);return;}
+ if(additive==1)gl_FragColor=vec4(c*a,1.);else gl_FragColor=vec4(c,a);}`;
+const MAXS=900;
+let layers=[],uid=0;
+function makeLayer(p){
+  const L=Object.assign({id:++uid,name:'层',blend:'ink',color:'#050506',alpha:.8,hdr:1,width:80,life:.4,taper:.55,narrow:.6,shape:'shape',hl:0,hlColor:'#ffd27a',
+    maskAmt:.5,maskTile:.6,maskPan:-.35,erodeAmt:.85,erodeSharp:6,edgeW:.08,edgeGlow:0,edgeColor:'#c99a45',uvFill:1,
+    turbAmt:0,turbTile:2.2,oldColor:'#202126',ageAmt:0,refrMode:'wave',refrAmt:16},p);
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MAXS*2*3),3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(MAXS*2*2),2).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('aDist',new THREE.BufferAttribute(new Float32Array(MAXS*2),1).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('aU',new THREE.BufferAttribute(new Float32Array(MAXS*2),1).setUsage(THREE.DynamicDrawUsage));
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(MAXS*6),1).setUsage(THREE.DynamicDrawUsage));
+  const mat=new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:FS,transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{
+    shapeT:{value:white},maskT:{value:white},hlT:{value:black},color:{value:new THREE.Color()},edgeColor:{value:new THREE.Color()},hlColor:{value:new THREE.Color()},
+    time:{value:0},alpha:{value:1},hdr:{value:1},narrow:{value:.6},maskTile:{value:.6},maskPan:{value:-.35},maskAmt:{value:.5},erodeAmt:{value:.85},erodeSharp:{value:6},
+    edgeW:{value:.08},edgeGlow:{value:0},hlAmt:{value:0},additive:{value:0},dbg:{value:0},
+    turbT:{value:TURB},turbAmt:{value:0},turbTile:{value:2.2},ageAmt:{value:0},oldTint:{value:new THREE.Color()},
+    gnawT:{value:white},gnawAmt:{value:0},gnawPan:{value:0},gnawTile:{value:1},gnawBlur:{value:0},maskBlur:{value:0},hlAlpha:{value:0},
+    shapeOff:{value:new THREE.Vector2()},hlOff:{value:new THREE.Vector2()},maskOff:{value:new THREE.Vector2()},gnawOff:{value:new THREE.Vector2()}}});
+  L.mesh=new THREE.Mesh(g,mat);L.mesh.frustumCulled=false;scene.add(L.mesh);L.samples=[];
+  syncLayer(L);bindTex(L);return L;
+}
+function bindTex(L){const u=L.mesh.material.uniforms;u.shapeT.value=L.shapeTex||(L.shape==='hl'?TX.hl:L.shape==='white'?white:TX.shape);u.maskT.value=L.maskTex||TX.mask;u.hlT.value=L.hlTex||TX.hl;u.turbT.value=L.turbTex||TURB;u.gnawT.value=L.gnawTex||white;}
+function syncLayer(L){
+  const u=L.mesh.material.uniforms,lin=h=>new THREE.Color(h);
+  u.color.value.copy(lin(L.color));u.edgeColor.value.copy(lin(L.edgeColor));u.hlColor.value.copy(lin(L.hlColor));
+  for(const k of ['alpha','hdr','narrow','maskTile','maskPan','maskAmt','erodeAmt','erodeSharp','edgeW','edgeGlow'])u[k].value=+L[k];
+  u.hlAmt.value=+L.hl;u.dbg.value=+(L.dbg||0);
+  for(const k of ['gnawAmt','gnawPan','gnawBlur','maskBlur','hlAlpha'])u[k].value=+L[k]||0;u.gnawTile.value=+L.gnawTile||1;
+  for(const k of ['shapeOff','hlOff','maskOff','gnawOff'])u[k].value.fromArray(L[k]||[0,0]);
+  u.turbAmt.value=+L.turbAmt||0;u.turbTile.value=+L.turbTile||2.2;u.ageAmt.value=+L.ageAmt||0;u.oldTint.value.copy(lin(L.oldColor||'#202126'));
+  // refraction layer: drawn only into the offset buffer (camera layer 1); R = wave amount, G = ring amount (1 = 16 px at 720p)
+  const rf=L.blend==='refract';
+  if(rf){const k=(+L.refrAmt||0)/16;u.color.value.setRGB(L.refrMode==='ring'?0:k,L.refrMode==='ring'?k:0,0);u.hdr.value=1;u.edgeGlow.value=0;u.hlAmt.value=0;u.ageAmt.value=0;}
+  L.mesh.layers.set(rf?1:0);
+  u.additive.value=L.blend==='glow'||rf?1:0;
+  const m=L.mesh.material;m.blending=L.blend==='glow'||rf?THREE.AdditiveBlending:THREE.NormalBlending;m.needsUpdate=true;bindTex(L);
+}
+function buildRibbon(L,now){
+  const life=Math.max(.02,+L.life),S0=L.samples;while(S0.length&&now-S0[0].t>life)S0.shift();
+  const g=L.mesh.geometry,P=g.attributes.position.array,U=g.attributes.uv.array,D=g.attributes.aDist.array,AU=g.attributes.aU.array,I=g.index.array;
+  let n=0,ni=0,old=1;const w=L.width/100*WS;
+  for(let i=0;i<S0.length&&n<MAXS;i++){const s=S0[i],age=(now-s.t)/life,wi=w*(1-L.taper*age);
+    if(i===0||s.brk)old=Math.max(age,1e-3);   // first sample of a stroke = its oldest
+    AU[n*2]=AU[n*2+1]=+L.uvFill?Math.min(1,age/old):age;
+    const tip=s.tip,inn=tip.clone().addScaledVector(s.dir,-wi);
+    P.set([inn.x,inn.y,inn.z,tip.x,tip.y,tip.z],n*6);U.set([age,0,age,1],n*4);D[n*2]=D[n*2+1]=s.dist;
+    if(i>0&&!s.brk){const a=(n-1)*2,b=n*2;I.set([a,b,a+1,a+1,b,b+1],ni);ni+=6;}n++;}
+  g.setDrawRange(0,ni);g.attributes.position.needsUpdate=g.attributes.uv.needsUpdate=g.attributes.aDist.needsUpdate=g.attributes.aU.needsUpdate=true;g.index.needsUpdate=true;
+}
+// ---------- loop: sample the swing at 240 Hz in sim time ----------
+let simT=0,lastSample=0,lastK=-1,distAcc=0,prevTip=null,clock=performance.now();
+function loop(){
+  requestAnimationFrame(loop);if(!ready||window.BTG_tab!==4||REC)return;
+  const t=performance.now(),dt=Math.min(.05,(t-clock)/1000);clock=t;
+  if(!$('pause4').checked)simT+=dt*+$('speed4').value;
+  advance();render1();
+}
+function advance(){
+  const step=1/240;
+  while(lastSample+step<=simT){lastSample+=step;const[a,da,k]=swingAngle(lastSample);
+    const dir=bladeDir(a),tip=dir.clone().multiplyScalar(W.tip).add(hiltPos(a));
+    const swinging=Math.abs(da)>120;
+    if(swinging){const brk=k!==lastK;if(prevTip&&!brk)distAcc+=tip.distanceTo(prevTip);lastK=k;prevTip=tip;
+      for(const L of layers)L.samples.push({t:lastSample,tip,dir,dist:distAcc,brk:brk&&L.samples.length>0?true:false});}
+    else prevTip=null;}
+}
+function render1(){
+  const[a]=swingAngle(simT);blade.position.copy(hiltPos(a));blade.quaternion.setFromAxisAngle(AX,a*Math.PI/180);blade.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),.25));
+  for(const L of layers){buildRibbon(L,simT);L.mesh.material.uniforms.time.value=simT;}
+  const gl=+$('glow4').value;bladeGlow.visible=gl>0&&!W.model;bladeGlow.material.color.setRGB(gl,gl*.55,gl*.12);
+  scene.background=new THREE.Color($('bg4').value);bloom.strength=+$('bloom4').value;
+  controls.update();particlesUpdate(simT);renderRefrMask();composer.render();
+  $('info4').textContent=`层 ${layers.length} · 慢放 ×${$('speed4').value} · 拖动旋转 / 滚轮缩放 · 把 glb 拖进来换武器`;
+}
+// debug / capture: jump the simulation to time t (fresh trails) and draw one frame
+function restartSwing(){for(const L of layers)L.samples=[];simT=0;lastSample=0;lastK=-1;distAcc=0;prevTip=null;}
+window.BTG_seek=t=>{for(const L of layers)L.samples=[];simT=0;lastSample=0;lastK=-1;distAcc=0;prevTip=null;$('pause4').checked=true;simT=t;advance();render1();return layers.map(L=>L.samples.length);};
+
+// ---------- recording API (?rec=1&w=&h=): full-window preview driven from outside, deterministic ----------
+if(REC){const q=new URLSearchParams(location.search),W=+q.get('w')||1280,H=+q.get('h')||720;
+  const st=document.createElement('style');st.textContent=`header,#ctrl4,#info4,#bar4,#drop4{display:none!important}.stage{border-radius:0!important;box-shadow:none!important}main#tab4{display:block!important;min-height:0}#three4{position:fixed!important;left:0;top:0;width:${W}px!important;height:${H}px!important}body{overflow:hidden}`;document.head.appendChild(st);}
+function seeded(seed,fn){const R=Math.random,r=(()=>{let a=seed>>>0||1;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};})();Math.random=r;try{return fn();}finally{Math.random=R;}}
+const RT={shape:{},mask:{},hl:{}},RG={shape:{},mask:{},hl:{}};
+window.BTG_rec={
+  start(){document.querySelector('.tabs button[data-tab="4"]').click();return ready;},
+  get ready(){return ready;},
+  get canvas(){return renderer.domElement;},
+  makeShape(id,seed,over){seeded(seed,()=>roll());if(over){Object.assign(S,over);generate();}RG.shape[id]={a:Float32Array.from(TEX),w:TW,h:TH,ob:S.outerBottom};RT.shape[id]=greyTex(TEX,TW,TH,S.outerBottom,false);return RG.shape[id];},
+  makeMask(id,style,seed){seeded(seed,()=>window.BTG_mask(style));const m=window.BTG_M;RG.mask[id]={a:Float32Array.from(m.M),w:m.MS,h:m.MS};RT.mask[id]=greyTex(m.M,m.MS,m.MS,1,true);return RG.mask[id];},
+  makeHL(id,seed){seeded(seed,()=>window.BTG_roll3());const h=window.BTG_HL;RG.hl[id]={a:Float32Array.from(h.data),w:h.w,h:h.h,ob:h.outerBottom};RT.hl[id]=greyTex(h.data,h.w,h.h,h.outerBottom,false);return RG.hl[id];},
+  grey(kind,id){return RG[kind][id];},
+  setLayers(arr){applyPreset({layers:arr.map(p=>this._tex(Object.assign({},p)))});},
+  _tex(p){if(p.shapeId!=null)p.shapeTex=p.shapeId==='white'?white:(RT.shape[p.shapeId]||RT.hl[p.shapeId]);if(p.maskId!=null)p.maskTex=p.maskId==='white'?white:RT.mask[p.maskId];if(p.hlId!=null)p.hlTex=RT.hl[p.hlId];return p;},
+  set(i,p){const L=layers[i];Object.assign(L,this._tex(Object.assign({},p)));syncLayer(L);},
+  get layers(){return layers;},
+  opts(o){for(const[k,id]of[['bg','bg4'],['bloom','bloom4'],['glow','glow4'],['dur','dur4']])if(o[k]!=null){const e=$(id);if(k==='bg'&&![...e.options].some(x=>x.value===o.bg)){const op=document.createElement('option');op.value=op.textContent=o.bg;e.appendChild(op);}e.value=o[k];}
+    if(o.hold!=null)SW.hold=o.hold;if(o.arm!=null)SW.arm=o.arm;if(o.from!=null)SW.from=o.from;if(o.to!=null)SW.to=o.to;if(o.steel!=null)blade.children[0].visible=blade.children[1].visible=o.steel;},
+  cam(pos,tgt,fov){camera.position.set(...pos);controls.target.set(...tgt);if(fov){camera.fov=fov;camera.updateProjectionMatrix();}controls.update();},
+  wire(on,col){for(const L of layers){if(on&&!L.wire){L.wire=new THREE.Mesh(L.mesh.geometry,new THREE.MeshBasicMaterial({color:col||0x002fa7,wireframe:true,transparent:true,depthTest:false}));L.wire.frustumCulled=false;scene.add(L.wire);}if(L.wire)L.wire.visible=!!on;}},
+  floor(on,o={}){if(!this._fl){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+      x.fillStyle=o.a||'#d9d9d9';x.fillRect(0,0,256,256);x.fillStyle=o.b||'#161617';x.fillRect(0,0,128,128);x.fillRect(128,128,128,128);
+      const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer.capabilities.getMaxAnisotropy();t.magFilter=THREE.NearestFilter;
+      const S=40,sq=o.sq||.25;t.repeat.set(S/(2*sq),S/(2*sq));
+      this._fl=new THREE.Mesh(new THREE.PlaneGeometry(S,S),new THREE.MeshBasicMaterial({map:t}));this._fl.rotation.x=-Math.PI/2;scene.add(this._fl);}
+    this._fl.visible=!!on;this._fl.position.y=o.y??-.45;scene.fog=on&&o.fog!==0?new THREE.Fog(new THREE.Color($('bg4').value),o.fog0||3.5,o.fog1||9):null;},
+  seek(t){return window.BTG_seek(t);},
+  swing(t){return swingAngle(t);},
+  emitting(t){return Math.abs(swingAngle(t)[1])>120;},
+  // screen positions (px in the canvas) of layer i's samples: [[innerX,innerY,tipX,tipY,age],...]
+  points(i){const L=layers[i],out=[],v=new THREE.Vector3(),w=renderer.domElement.width,h=renderer.domElement.height,life=Math.max(.02,+L.life),wd=L.width/100*WS;
+    for(const s of L.samples){const age=(simT-s.t)/life,wi=wd*(1-L.taper*age);const a=s.tip.clone().addScaledVector(s.dir,-wi).project(camera),b=s.tip.clone().project(camera);
+      out.push([(a.x+1)/2*w,(1-a.y)/2*h,(b.x+1)/2*w,(1-b.y)/2*h,age]);}return out;},
+  project(p){const v=new THREE.Vector3(...p).project(camera);return[(v.x+1)/2*renderer.domElement.width,(1-v.y)/2*renderer.domElement.height];},
+  bladeTip(t){const[a]=swingAngle(t);return bladeDir(a).multiplyScalar(W.tip).add(hiltPos(a)).toArray();},
+  // v10 additions (new calls only; everything above keeps its old behaviour)
+  weapon(src,o){return loadWeapon(src,o);},             // glb url / ArrayBuffer / null (= default blade)
+  fx(o){return setFX(o);},                               // {sparks:{on,...},drops:{...},smoke:{...},seed}; resolves when the smoke sheet is loaded
+  get fxState(){return JSON.parse(JSON.stringify(FX));},
+  get weaponInfo(){return {name:W.name,base:W.base,tip:W.tip,widthScale:WS};},
+  hilt(t){return hiltPos(swingAngle(t)[0]).toArray();},
+};
+// ---------- presets (structure only: widths / colours / alphas / lives; all textures are ours) ----------
+const PRESETS=[
+ {name:'墨 + 金线',layers:[{name:'墨',blend:'ink',color:'#030304',alpha:.85,width:80,life:.4},{name:'金线',blend:'glow',color:'#b8862e',alpha:.9,hdr:1.2,width:22,life:.18,narrow:.4,maskAmt:.8,erodeAmt:1.2}]},
+ {name:'普攻两层（黑 + 暗红）',layers:[{name:'黑',blend:'ink',color:'#000000',alpha:.8,width:80,life:.4},{name:'暗红',blend:'ink',color:'#8a0000',alpha:1,width:40,life:.125,narrow:.8}]},
+ {name:'强化三层',layers:[{name:'黑',blend:'ink',color:'#000000',alpha:.7,width:80,life:.3},{name:'暗红细',blend:'ink',color:'#8a0000',alpha:1,width:25,life:.2,narrow:.8},{name:'暗红宽',blend:'ink',color:'#6a0000',alpha:.6,width:80,life:.1}]},
+ {name:'发光刀光（对照）',layers:[{name:'光',blend:'glow',color:'#4a7bff',alpha:1,hdr:3,width:70,life:.3,hl:2,hlColor:'#ffffff'}]},
+ {name:'金线 + 火星',layers:[{name:'墨',blend:'ink',color:'#030304',alpha:.85,width:80,life:.4,turbAmt:.12},{name:'金线',blend:'glow',color:'#d08a28',alpha:1,hdr:2.4,width:22,life:.18,narrow:.4,maskAmt:.8,erodeAmt:1.2}],fx:{sparks:1}},
+ {name:'水刃 + 折射',layers:[{name:'水',blend:'glow',color:'#1b8cff',alpha:.9,hdr:1.3,width:70,life:.3,maskAmt:.6,turbAmt:.15,oldColor:'#0a2a55',ageAmt:.6},{name:'折射',blend:'refract',refrMode:'ring',refrAmt:18,width:95,life:.35,maskAmt:.8,erodeAmt:.9,taper:.4,narrow:.3}],fx:{drops:1}},
+ {name:'烟刃',layers:[{name:'墨',blend:'ink',color:'#121317',alpha:.85,width:80,life:.45,turbAmt:.25,oldColor:'#77777f',ageAmt:.85},{name:'折射',blend:'refract',refrMode:'wave',refrAmt:12,width:80,life:.4,maskAmt:.8,erodeAmt:.9,taper:.4,narrow:.3}],fx:{smoke:1}},
+];
+function applyPreset(p){for(const L of layers){scene.remove(L.mesh);L.mesh.geometry.dispose();L.mesh.material.dispose();}layers=p.layers.map(makeLayer);renderLayers();
+  if(p.fx)setFX({sparks:{on:p.fx.sparks?1:0},drops:{on:p.fx.drops?1:0},smoke:{on:p.fx.smoke?1:0}});syncFxUI();}
+const pc=$('presets4');PRESETS.forEach((p,i)=>{const b=document.createElement('button');b.textContent=p.name;b.onclick=()=>{[...pc.children].forEach(c=>c.classList.toggle('on',c===b));applyPreset({...p,fx:p.fx||{}});};pc.appendChild(b);if(!i)b.classList.add('on');});
+// ---------- layer cards ----------
+const FIELDS=[['blend','混合','sel',[['ink','半透明'],['glow','加色'],['refract','折射']]],['refrMode','折射形状','sel',[['wave','波纹'],['ring','一圈一圈']]],['refrAmt','折射强度 px',0,60,1],['color','颜色','col'],['alpha','不透明度',0,1,.01],['hdr','HDR 亮度',0,10,.05],['width','宽度 cm',5,150,1],
+  ['life','寿命 s',.03,1,.005],['taper','尾端收窄',0,.95,.01],['narrow','窗口收窄',0,2,.05],['shape','形状图','sel',[['shape','① 主体'],['hl','③ 高光'],['white','纯白']]],['uvFill','贴图铺法','sel',[['1','铺满整条'],['0','按年龄']]],
+  ['maskAmt','遮罩强度',0,1,.01],['maskPan','遮罩滑动',-2,2,.05],['erodeAmt','溶解速度',0,2,.01],['edgeGlow','溶解边亮度',0,4,.05],['edgeColor','溶解边色','col'],['hl','高光强度',0,6,.05],['hlColor','高光色','col'],
+  ['turbAmt','细节扰动',0,.6,.01],['turbTile','扰动密度',.5,8,.1],['oldColor','老化颜色','col'],['ageAmt','颜色随年龄',0,1,.01]];
+function renderLayers(){
+  const box=$('layers4');box.innerHTML='';
+  layers.forEach((L,idx)=>{const f=document.createElement('fieldset');f.innerHTML=`<legend>${idx+1}. <input value="${L.name}" style="width:80px;background:transparent;color:var(--acc);border:0;font:inherit;font-weight:700"> <button data-x style="min-height:24px;padding:0 8px">×</button></legend>`;
+    f.querySelector('legend input').oninput=e=>L.name=e.target.value;
+    f.querySelector('[data-x]').onclick=()=>{scene.remove(L.mesh);layers=layers.filter(x=>x!==L);renderLayers();syncFxUI();};
+    const det=document.createElement('details');det.innerHTML='<summary style="margin:0">参数</summary>';if(idx===layers.length-1)det.open=false;
+    FIELDS.forEach(([k,label,a,b,c])=>{const d=document.createElement('div');d.className='row';let inp;
+      if(a==='sel'){inp=document.createElement('select');b.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;inp.appendChild(o);});}
+      else if(a==='col'){inp=document.createElement('input');inp.type='color';}
+      else{inp=document.createElement('input');inp.type='range';inp.min=a;inp.max=b;inp.step=c;}
+      inp.value=L[k];const out=document.createElement('output');out.textContent=a==='sel'||a==='col'?'':(+L[k]).toFixed(c>=1?0:2);
+      inp.oninput=()=>{L[k]=a==='sel'||a==='col'?inp.value:+inp.value;if(out.textContent!=='')out.textContent=(+L[k]).toFixed(c>=1?0:2);syncLayer(L);if(k==='blend'||k==='refrMode')syncFxUI();};
+      const lb=document.createElement('label');lb.textContent=label;d.append(lb,inp,out);
+      // the four that matter most stay visible; the rest fold into 参数
+      (['color','alpha','width','life'].includes(k)?f:det).appendChild(d);});
+    f.appendChild(det);box.appendChild(f);});
+}
+$('add4').onclick=()=>{layers.push(makeLayer({name:'新层',color:'#3a2a10',alpha:.8,width:40,life:.25}));renderLayers();};
+[['speed4',2],['dur4',2],['bloom4',2],['glow4',1]].forEach(([id,d])=>{const o=$(id+'o'),f=()=>o.textContent=(+$(id).value).toFixed(d);$(id).addEventListener('input',f);f();});
+// ---------- export: channel pack + recipe ----------
+const SRC=[['none','（空）'],['shape','① 主体形状'],['mask','② 遮罩/溶解'],['hl','③ 高光'],['white','纯白']];
+['pkR','pkG','pkB','pkA'].forEach((id,i)=>{const s=$(id);SRC.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;s.appendChild(o);});s.value=['hl','mask','none','shape'][i];});
+function grabGrey(src,W,H){   // resampled to W x H, image rows top->bottom
+  const out=new Float32Array(W*H);
+  const pick=(arr,w,h,tile)=>{for(let y=0;y<H;y++)for(let x=0;x<W;x++){let sx=x/W*w,sy=y/H*h;if(tile){sx=(x/W*w*1)%w;sy=(y/H*h)%h;}out[y*W+x]=arr[Math.min(h-1,sy|0)*w+Math.min(w-1,sx|0)];}};
+  if(src==='shape'&&TEX)pick(TEX,TW,TH);else if(src==='hl'&&window.BTG_HL)pick(window.BTG_HL.data,window.BTG_HL.w,window.BTG_HL.h);
+  else if(src==='mask'&&window.BTG_M)pick(window.BTG_M.M,window.BTG_M.MS,window.BTG_M.MS,true);else if(src==='white')out.fill(1);
+  return out;
+}
+$('pack4').onclick=()=>{
+  const W=1024,H=256,ch=['pkR','pkG','pkB','pkA'].map(id=>grabGrey($(id).value,W,H));
+  const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d'),im=ctx.createImageData(W,H);
+  for(let i=0;i<W*H;i++){for(let k=0;k<3;k++)im.data[i*4+k]=ch[k][i]*255;im.data[i*4+3]=$('pkA').value==='none'?255:ch[3][i]*255;}
+  ctx.putImageData(im,0,0);c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='T_SlashPacked_RGBA.png';a.click();},'image/png');
+};
+$('recipe4').onclick=()=>{const r={layers:layers.map(L=>{const o={};for(const k in L)if(!['mesh','samples','id'].includes(k))o[k]=L[k];return o;}),
+  shapeParams:S,maskParams:window.BTG_Q||null,swing:{duration:+$('dur4').value},bloom:+$('bloom4').value,bladeGlow:+$('glow4').value,
+  pack:{R:$('pkR').value,G:$('pkG').value,B:$('pkB').value,A:$('pkA').value}};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,1)],{type:'application/json'}));a.download='SlashRecipe.json';a.click();};
+
+// ---------- export bundle: zip (store) with recipe v1 + textures + preview ----------
+const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){let c=~0;for(let i=0;i<b.length;i++)c=CRCT[(c^b[i])&255]^(c>>>8);return ~c>>>0;}
+function zipStore(files){
+  const enc=new TextEncoder(),parts=[],cd=[];let off=0;
+  for(const f of files){const nm=enc.encode(f.name),crc=crc32(f.data),n=f.data.length;
+    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,33,true);
+    h.setUint32(14,crc,true);h.setUint32(18,n,true);h.setUint32(22,n,true);h.setUint16(26,nm.length,true);parts.push(new Uint8Array(h.buffer),nm,f.data);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,33,true);
+    c.setUint32(16,crc,true);c.setUint32(20,n,true);c.setUint32(24,n,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);cd.push(new Uint8Array(c.buffer),nm);
+    off+=30+nm.length+n;}
+  const cdLen=cd.reduce((s,a)=>s+a.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);
+  e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdLen,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type:'application/zip'});
+}
+const blobBytes=b=>b.arrayBuffer().then(a=>new Uint8Array(a));
+function greyPNG(arr,w,h,flip){   // flip: write bottom array row first (so the outer edge ends up on the top row)
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),im=ctx.createImageData(w,h);
+  for(let y=0;y<h;y++){const sy=flip?h-1-y:y;for(let x=0;x<w;x++){const g=Math.round(Math.min(1,Math.max(0,arr[sy*w+x]))*255),o=(y*w+x)*4;im.data[o]=im.data[o+1]=im.data[o+2]=g;im.data[o+3]=255;}}
+  ctx.putImageData(im,0,0);return new Promise(r=>c.toBlob(b=>r(blobBytes(b)),'image/png'));
+}
+const linRGB=hex=>{const c=new THREE.Color(hex);return [+c.r.toFixed(5),+c.g.toFixed(5),+c.b.toFixed(5)];};
+function recipeV1(){return {
+  format:'XSXB-Slash-recipe',version:1,
+  spec:'docs/SPEC.md in the XSXB-Slash repository: strip UVs, shader formula and per-engine notes',
+  conventions:{
+    stripU:'U = age / lifeS of the sample: 0 at the blade (newest), 1 at the oldest end',
+    stripV:'V = 0 inner edge (towards the hilt), 1 outer edge (the blade tip path)',
+    dist:'metres travelled by the blade tip since the swing started (second UV channel .x)',
+    textureRows:'top image row = outer edge (V=1). Sample at (U, 1-V) in top-left-origin engines (UE, Godot); at (U, V) in Unity',
+    colors:'linear RGB 0..1 (colorHex is the sRGB picker value)',
+    order:'draw layers in array order; later layers on top'},
+  constants:{erodeBase:-0.12,erodeAgePow:1.5,erodeInner:0.1,maskTileV:0.8,maskAgeDrift:0.15,detailGain:1.6,headSoft:0.005},
+  textures:{
+    shape:{file:'textures/shape.png',wrap:'clamp',srgb:false,size:[TW,TH]},
+    mask:{file:'textures/mask.png',wrap:'repeat',srgb:false,size:[window.BTG_M?window.BTG_M.MS:0,window.BTG_M?window.BTG_M.MS:0]},
+    highlight:{file:'textures/highlight.png',wrap:'clamp',srgb:false,size:window.BTG_HL?[window.BTG_HL.w,window.BTG_HL.h]:[0,0]}},
+  layers:layers.filter(L=>L.blend!=='refract').map(L=>({name:L.name,blend:L.blend==='glow'?'additive':'alpha',color:linRGB(L.color),colorHex:L.color,alpha:+L.alpha,hdr:+L.hdr,
+    widthM:+(L.width/100*WS).toFixed(4),lifeS:+L.life,taper:+L.taper,windowNarrow:+L.narrow,shapeTexture:{shape:'shape',hl:'highlight',white:'white'}[L.shape],
+    maskAmount:+L.maskAmt,maskTilePerM:+L.maskTile,maskPanPerS:+L.maskPan,erodeSpeed:+L.erodeAmt,erodeSharp:+L.erodeSharp,
+    edgeWidth:+L.edgeW,edgeGlow:+L.edgeGlow,edgeColor:linRGB(L.edgeColor),highlight:+L.hl,highlightColor:linRGB(L.hlColor),
+    turbulence:{amount:+L.turbAmt||0,tilePerM:+L.turbTile||2.2},
+    uvOffset:{shape:L.shapeOff||[0,0],highlight:L.hlOff||[0,0],mask:L.maskOff||[0,0]},maskBlurLod:+L.maskBlur||0,highlightAlpha:+L.hlAlpha||0,
+    gnaw:L.gnawAmt>0?{texture:'textures/gnaw.png',threshold:+L.gnawAmt,panPerS:+L.gnawPan,tilePerM:+L.gnawTile,blurLod:+L.gnawBlur,uvOffset:L.gnawOff||[0,0]}:null,ageColor:{color:linRGB(L.oldColor||'#202126'),colorHex:L.oldColor||'#202126',amount:+L.ageAmt||0}})),
+  fx:fxRecipe(),
+  preview:{background:$('bg4').value,bloomStrength:+$('bloom4').value,bloomThreshold:1,swingDurationS:+$('dur4').value,bladeLengthM:+W.tip.toFixed(4),hiltOffsetM:+W.base.toFixed(4),weapon:W.name,previewImage:'preview.png',previewTimeS:+(+$('dur4').value*.62).toFixed(3)},
+  generator:{shape:S,mask:window.BTG_Q||null}};}
+$('bundle4').onclick=async()=>{
+  if(!window.BTG_M)window.BTG_ensureMask&&window.BTG_ensureMask();if(!window.BTG_HL)window.BTG_roll3();
+  const r=recipeV1(),enc=new TextEncoder(),files=[];
+  files.push({name:'recipe.json',data:enc.encode(JSON.stringify(r,null,1))});
+  files.push({name:'textures/shape.png',data:await greyPNG(TEX,TW,TH,!!S.outerBottom)});
+  files.push({name:'textures/mask.png',data:await greyPNG(window.BTG_M.M,window.BTG_M.MS,window.BTG_M.MS,false)});
+  files.push({name:'textures/highlight.png',data:await greyPNG(window.BTG_HL.data,window.BTG_HL.w,window.BTG_HL.h,!!window.BTG_HL.outerBottom)});
+  if(window.BTG_GNAW)files.push({name:'textures/gnaw.png',data:await greyPNG(window.BTG_GNAW.a,window.BTG_GNAW.w,window.BTG_GNAW.h,false)});
+  const keep=simT,paused=$('pause4').checked;window.BTG_seek(r.preview.previewTimeS);
+  const prev=await new Promise(res=>renderer.domElement.toBlob(b=>res(blobBytes(b)),'image/png'));files.push({name:'preview.png',data:prev});
+  $('pause4').checked=paused;simT=keep;
+  files.push({name:'README.txt',data:enc.encode(
+'XSXB-Slash export bundle\n\nrecipe.json        layers + exact parameters (linear colours, metres, seconds)\ntextures/shape.png main shape, Clamp, top row = outer edge\ntextures/mask.png  tileable mask / dissolve, Repeat\ntextures/highlight.png  highlight streaks, Clamp, top row = outer edge\npreview.png        how it looks in the web preview at preview.previewTimeS\n\nAll textures are linear data (turn sRGB off).\nTo put it in Unity / Godot / Unreal: follow docs/SPEC.md and engines/<engine>/ in the XSXB-Slash repo,\nor give this folder to a coding agent that has the xsxb-slash-install skill.\n')});
+  const a=document.createElement('a');a.href=URL.createObjectURL(zipStore(files));a.download='XSXB-Slash_'+(S.seed||'export')+'.zip';a.click();
+};
+// ---------- refraction: refract layers render into refrRT (camera layer 1), then a screen pass offsets the frame under them ----------
+// R = wave amount, G = ring amount; 1.0 = 16 px at 720p. Waves move with sim time, rings spread out from the pivot.
+const REFR_SHADER={uniforms:{tDiffuse:{value:null},tRefr:{value:null},time:{value:0},res:{value:new THREE.Vector2(1,1)},center:{value:new THREE.Vector2(.5,.5)}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform sampler2D tDiffuse,tRefr;uniform float time;uniform vec2 res,center;varying vec2 vUv;
+void main(){vec4 r=texture2D(tRefr,vUv);float s=res.y/720.;vec2 px=vUv*res/s;vec2 off=vec2(0.);
+ off+=r.r*16.*vec2(sin(px.y*.045+time*9.)*sin(px.x*.031-time*5.),cos(px.x*.05-time*7.)*sin(px.y*.02+time*3.));
+ vec2 d=px-center*res/s;float l=max(length(d),1.);off+=r.g*16.*1.3*sin(l*.09-time*12.)*d/l;
+ gl_FragColor=texture2D(tDiffuse,vUv+off*s/res);}`};
+function renderRefrMask(){
+  const on=layers.some(L=>L.blend==='refract'&&L.mesh.visible);refrPass.enabled=on;if(!on)return;
+  const bg=scene.background,fog=scene.fog,cc=renderer.getClearColor(new THREE.Color()),ca=renderer.getClearAlpha();
+  scene.background=null;scene.fog=null;camera.layers.set(1);renderer.setRenderTarget(refrRT);renderer.setClearColor(0x000000,0);renderer.clear();renderer.render(scene,camera);
+  renderer.setRenderTarget(null);camera.layers.set(0);scene.background=bg;scene.fog=fog;renderer.setClearColor(cc,ca);
+  const c=new THREE.Vector3(0,0,0).project(camera),U=refrPass.uniforms;U.tRefr.value=refrRT.texture;U.time.value=simT;
+  U.center.value.set((c.x+1)/2,(c.y+1)/2);U.res.value.set(refrRT.width,refrRT.height);
+}
+
+// ---------- weapon: default box blade, or any glb (grip end at the pivot, longest axis along the blade) ----------
+// W.base / W.tip = metres from the pivot where the trail's inner / outer edge sit; layer widths scale with (tip - base) / 1 m.
+const W={name:'默认刀',base:.2,tip:1.2,model:null,raw:null,flip:0,roll:0,scale:1,inF:null,outF:1};
+let WS=1;
+function weaponFit(){
+  if(!W.raw){W.base=.2;W.tip=1.2;WS=1;return;}
+  const R=W.raw,s=W.scale*R.unit,len=R.len*s;
+  const d=R.dir.clone().multiplyScalar(W.flip?-1:1),grip=W.flip?R.grip.clone().addScaledVector(R.dir,R.len):R.grip.clone();
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),W.roll*Math.PI/180).multiply(new THREE.Quaternion().setFromUnitVectors(d,new THREE.Vector3(1,0,0)));
+  W.model.quaternion.copy(q);W.model.scale.setScalar(s);W.model.position.copy(grip.applyQuaternion(q).multiplyScalar(-s));
+  const prof=W.flip?R.prof.slice().reverse():R.prof,inF=W.inF??autoInner(prof);
+  W.base=len*inF;W.tip=len*W.outF;WS=Math.max(.05,W.tip-W.base)/1;
+  $('wIn4').value=inF.toFixed(2);$('wIn4o').textContent=(+inF).toFixed(2);
+  $('wInfo4').textContent=`${W.name} · 长 ${len.toFixed(2)} m · 刀光 ${W.base.toFixed(2)}–${W.tip.toFixed(2)} m（层宽 ×${WS.toFixed(2)}）`;
+}
+// inner edge: first bin past 15 % whose radius reaches half the widest part (guard, canopy, blade root ...)
+function autoInner(prof){let mx=0;for(let i=9;i<prof.length;i++)mx=Math.max(mx,prof[i]);for(let i=9;i<prof.length;i++)if(prof[i]>=.5*mx)return Math.min(.8,i/prof.length);return .2;}
+let gltfLoader=null;
+async function loadWeapon(src,o={}){
+  if(W.model){blade.remove(W.model);W.model=null;W.raw=null;}
+  for(const c of blade.children.slice(0,3))c.visible=true;
+  if(!src){W.name='默认刀';W.inF=null;weaponFit();$('wInfo4').textContent='';markWeapon();return W;}
+  if(!gltfLoader){const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');gltfLoader=new GLTFLoader();}
+  const gl=typeof src==='string'?await gltfLoader.loadAsync(src):await new Promise((res,rej)=>gltfLoader.parse(src,'',res,rej));
+  const root=gl.scene,clip=gl.animations.find(a=>/closed/i.test(a.name));
+  if(clip){const mx=new THREE.AnimationMixer(root);mx.clipAction(clip).play();mx.update(0);}
+  root.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(root,true),size=box.getSize(new THREE.Vector3()),ctr=box.getCenter(new THREE.Vector3());
+  const ax=size.x>=size.y&&size.x>=size.z?'x':size.y>=size.z?'y':'z',len=size[ax];
+  const lo=box.min[ax],hi=box.max[ax],gripLo=Math.abs(lo)<=Math.abs(hi);      // grip = the end nearer the model origin
+  const dir=new THREE.Vector3();dir[ax]=gripLo?1:-1;const grip=ctr.clone();grip[ax]=gripLo?lo:hi;
+  const prof=new Array(60).fill(0),v=new THREE.Vector3(),rel=new THREE.Vector3();
+  root.traverse(m=>{if(!m.isMesh)return;const p=m.geometry.attributes.position,st=Math.max(1,Math.floor(p.count/20000));
+    for(let i=0;i<p.count;i+=st){m.getVertexPosition?m.getVertexPosition(i,v):v.fromBufferAttribute(p,i);v.applyMatrix4(m.matrixWorld);rel.subVectors(v,grip);
+      const t=rel.dot(dir)/len,k=Math.min(59,Math.max(0,Math.floor(t*60)));rel.addScaledVector(dir,-rel.dot(dir));prof[k]=Math.max(prof[k],rel.length());}});
+  const H=new THREE.Group();H.add(root);blade.add(H);for(const c of blade.children.slice(0,3))c.visible=false;
+  W.model=H;W.raw={len,dir,grip,prof,unit:len>5?.01:1};W.name=o.name||(typeof src==='string'?decodeURIComponent(src.split('/').pop()):'glb');
+  W.inF=o.inner??null;W.outF=o.outer??1;W.flip=o.flip?1:0;W.roll=o.roll||0;W.scale=o.scale||1;
+  $('wFlip4').checked=!!W.flip;$('wRoll4').value=W.roll;$('wScale4').value=W.scale;$('wOut4').value=W.outF;['wRoll4','wScale4','wOut4'].forEach(id=>$(id+'o').textContent=(+$(id).value).toFixed(id==='wRoll4'?0:2));
+  weaponFit();markWeapon();if(!REC){$('more4').open=$('more4').open;}
+  return W;
+}
+function markWeapon(){$('wDef4').classList.toggle('on',!W.model);$('wLoad4').classList.toggle('on',!!W.model);if(W.model)$('wLoad4').innerHTML=`${W.name.replace(/[<>&]/g,'')}<small>换一个…</small>`;else $('wLoad4').innerHTML='加载 glb…<small>或直接拖进画面</small>';}
+$('wDef4').onclick=()=>loadWeapon(null);
+$('wLoad4').onclick=()=>$('wFile4').click();
+$('wFile4').onchange=async e=>{const f=e.target.files[0];if(f)await loadWeapon(await f.arrayBuffer(),{name:f.name}).catch(err=>{$('wInfo4').textContent='加载失败：'+err.message;});e.target.value='';};
+{const st=$('stage4'),dp=$('drop4');
+  st.addEventListener('dragover',e=>{e.preventDefault();dp.classList.add('on');});
+  st.addEventListener('dragleave',e=>{if(e.target===st||!st.contains(e.relatedTarget))dp.classList.remove('on');});
+  st.addEventListener('drop',async e=>{e.preventDefault();dp.classList.remove('on');const f=[...e.dataTransfer.files].find(f=>/\.(glb|gltf)$/i.test(f.name));
+    if(f)await loadWeapon(await f.arrayBuffer(),{name:f.name}).catch(err=>{$('wInfo4').textContent='加载失败：'+err.message;});});}
+$('wFlip4').onchange=e=>{W.flip=e.target.checked?1:0;W.inF=null;weaponFit();};
+[['wRoll4','roll',0],['wScale4','scale',2],['wIn4','inF',2],['wOut4','outF',2]].forEach(([id,k,d])=>{const o=$(id+'o'),f=()=>o.textContent=(+$(id).value).toFixed(d);f();
+  $(id).addEventListener('input',()=>{W[k]=+$(id).value;f();if(W.raw)weaponFit();});});
+
+// ---------- particles: sparks (additive, HDR), liquid drops, smoke flipbook ----------
+// Closed-form in sim time: each swing k has a fixed emitting window; a particle is born at a seeded time inside it, at a seeded
+// point along the blade, and its position is a ballistic function of (simT - birth). So seek(t) is deterministic, like the trail.
+const FX={seed:7,
+  sparks:{on:0,count:60,color:'#ff9a3c',hdr:2.5,size:1,speed:1,len:1,life:1},
+  drops:{on:0,count:16,color:'#38d6ff',size:1,speed:1,life:1},
+  smoke:{on:0,count:24,tint:'#ffffff',opacity:.8,size:1,life:1}};
+const PMAX=2500,PV=`attribute vec4 pcol;varying vec2 vUv;varying vec4 vC;void main(){vUv=uv;vC=pcol;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+const PB={};let smokeTex=null,smokeWait=null;
+function pMesh(fs,uni,blend,order){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(PMAX*12),3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(PMAX*8),2).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('pcol',new THREE.BufferAttribute(new Float32Array(PMAX*16),4).setUsage(THREE.DynamicDrawUsage));
+  const I=new Uint32Array(PMAX*6);for(let i=0;i<PMAX;i++)I.set([i*4,i*4+1,i*4+2,i*4,i*4+2,i*4+3],i*6);g.setIndex(new THREE.BufferAttribute(I,1));
+  const m=new THREE.Mesh(g,new THREE.ShaderMaterial({vertexShader:PV,fragmentShader:fs,uniforms:uni,transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:blend}));
+  m.frustumCulled=false;m.renderOrder=order;m.visible=false;scene.add(m);return {m,n:0};
+}
+function initParticles(){
+  PB.smoke=pMesh(`uniform sampler2D sheet;varying vec2 vUv;varying vec4 vC;void main(){vec4 t=texture2D(sheet,vUv);gl_FragColor=vec4(t.rgb*vC.rgb,t.a*vC.a);}`,
+    {sheet:{value:white}},THREE.NormalBlending,-1);
+  PB.drops=pMesh(`varying vec2 vUv;varying vec4 vC;void main(){vec2 q=vUv*2.-1.;float r=length(q);if(r>1.)discard;float a=1.-smoothstep(.72,1.,r);
+ vec3 c=vC.rgb*(.45+.55*(1.-r*r));float h=1.-smoothstep(0.,.32,length(q-vec2(.3,.35)));c=mix(c,vec3(1.),h*.85);gl_FragColor=vec4(c,a*vC.a);}`,{},THREE.NormalBlending,1);
+  PB.sparks=pMesh(`uniform float hdr;varying vec2 vUv;varying vec4 vC;void main(){float d=abs(vUv.y*2.-1.),x=vUv.x;float glow=1.-smoothstep(.1,1.,d),core=1.-smoothstep(0.,.32,d);
+ vec3 c=(vC.rgb*glow*(.35+.65*x)+vec3(1.,.93,.78)*core*smoothstep(.25,1.,x))*hdr;gl_FragColor=vec4(c,vC.a);}`,{hdr:{value:4}},THREE.AdditiveBlending,2);
+}
+function needSmoke(){
+  if(smokeTex)return Promise.resolve();if(smokeWait)return smokeWait;
+  smokeWait=new Promise((res,rej)=>{const go=()=>new THREE.TextureLoader().load(window.XSXB_SMOKE_SHEET,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;smokeTex=t;PB.smoke.m.material.uniforms.sheet.value=t;res();},undefined,rej);
+    if(window.XSXB_SMOKE_SHEET)go();else{const sc=document.createElement('script');sc.src='assets/smoke_sheet.js';sc.onload=go;sc.onerror=()=>rej(new Error('assets/smoke_sheet.js missing'));document.head.appendChild(sc);}});
+  return smokeWait;
+}
+function setFX(o={}){
+  if(o.seed!=null)FX.seed=o.seed;
+  for(const k of ['sparks','drops','smoke'])if(o[k])Object.assign(FX[k],o[k]);
+  syncFxUI();return FX.smoke.on?needSmoke().then(()=>FX):Promise.resolve(FX);
+}
+function fxRecipe(){
+  const rf=layers.filter(L=>L.blend==='refract');
+  return {note:'preview-only in the v1 engine ports (they draw the ribbon layers); numbers are here so you can rebuild them in your engine',
+    refraction:rf.map(L=>({shape:L.refrMode==='ring'?'ring':'wave',strengthPx720:+L.refrAmt,widthM:+(L.width/100*WS).toFixed(4),lifeS:+L.life,maskAmount:+L.maskAmt,erodeSpeed:+L.erodeAmt})),
+    sparks:FX.sparks.on?{...FX.sparks,color:linRGB(FX.sparks.color),colorHex:FX.sparks.color}:null,
+    drops:FX.drops.on?{...FX.drops,color:linRGB(FX.drops.color),colorHex:FX.drops.color}:null,
+    smoke:FX.smoke.on?{...FX.smoke,tint:linRGB(FX.smoke.tint),flipbook:'assets/smoke_sheet_2048.png in the XSXB-Slash repo: 16x16 cells = 8 variants x 32 frames (variant v uses rows 2v, 2v+1), RGB = shade, A = mask'}:null};
+}
+let WINC=null;
+function emitWin(){   // emitting window of one swing, relative to its start (same test as advance(): |angular speed| > 120 deg/s)
+  const dur=+$('dur4').value,key=dur+'|'+SW.from+'|'+SW.to+'|'+SW.hold;if(WINC&&WINC.key===key)return WINC;
+  let a=null,b=0;for(let i=0;i*(1/240)<=dur;i++){const s=i/240;if(Math.abs(swingAngle(s)[1])>120){if(a===null)a=s;b=s;}}
+  return WINC={key,a:a??0,b,per:dur+SW.hold};
+}
+function bladePt(t,g){const[a]=swingAngle(t);return bladeDir(a).multiplyScalar(W.base+(W.tip-W.base)*g).add(hiltPos(a));}
+function prng(seed){let a=seed>>>0||1;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const _c=new THREE.Color(),_r=new THREE.Vector3(),_u=new THREE.Vector3(),_ax=new THREE.Vector3(),_sd=new THREE.Vector3(),_vw=new THREE.Vector3();
+function pQuad(B,p0,p1,p2,p3,uv,col){if(B.n>=PMAX)return;const g=B.m.geometry,P=g.attributes.position.array,U=g.attributes.uv.array,C=g.attributes.pcol.array,o=B.n*4;
+  [p0,p1,p2,p3].forEach((p,i)=>{P[(o+i)*3]=p.x;P[(o+i)*3+1]=p.y;P[(o+i)*3+2]=p.z;C.set(col,(o+i)*4);});U.set(uv,o*2);B.n++;}
+// quad along a world segment a->b, facing the camera, half width hw (uv.x 0 at a .. 1 at b)
+function pStreak(B,a,b,hw,col){_ax.subVectors(b,a);_vw.subVectors(camera.position,b);_sd.crossVectors(_ax,_vw).normalize().multiplyScalar(hw);
+  pQuad(B,a.clone().sub(_sd),b.clone().sub(_sd),b.clone().add(_sd),a.clone().add(_sd),[0,0,1,0,1,1,0,1],col);}
+function unitV(r1,r2){const z=2*r1-1,ph=6.2831853*r2,q=Math.sqrt(1-z*z);return new THREE.Vector3(q*Math.cos(ph),z,q*Math.sin(ph));}
+function particlesUpdate(t){
+  const any=FX.sparks.on||FX.drops.on||FX.smoke.on;for(const k in PB){PB[k].n=0;PB[k].m.visible=false;}if(!any)return;
+  const w=emitWin(),maxLife=2.2*Math.max(1,FX.smoke.life,FX.drops.life||1,FX.sparks.life||1),k0=Math.max(0,Math.floor((t-w.b-maxLife)/w.per)),k1=Math.floor(t/w.per);
+  camera.updateMatrixWorld();_r.setFromMatrixColumn(camera.matrixWorld,0);_u.setFromMatrixColumn(camera.matrixWorld,1);
+  for(let k=k0;k<=k1;k++){
+    const s0=k*w.per+w.a,s1=k*w.per+w.b;if(s0>t)continue;
+    const born=(n,salt,g0,g1,fn)=>{const r=prng(FX.seed*7919+k*977+salt);for(let i=0;i<n;i++){const ts=s0+(s1-s0)*r(),g=g0+(g1-g0)*r(),rs=[r(),r(),r(),r(),r(),r()];
+      if(ts>t)continue;const p=bladePt(ts,g),v=bladePt(ts+.004,g).sub(p).multiplyScalar(250);fn(p,v,t-ts,rs);}};
+    if(FX.smoke.on&&smokeTex){const S=FX.smoke;_c.set(S.tint);born(Math.round(S.count),301,.35,1,(p,v,a,r)=>{
+      const life=(1.3+.6*r[0])*S.life;if(a>life)return;const kk=a/life,fr=Math.min(31,Math.floor(kk*32)),vi=Math.floor(r[1]*8),row=vi*2+(fr>>4),col=fr&15;
+      const sz=(.16+.42*Math.sqrt(kk))*(.7+.6*r[2])*S.size*Math.max(.5,WS),u0=col/16,u1=u0+1/16,v1=1-row/16,v0=v1-1/16;
+      const c=p.addScaledVector(v,.06*(1-Math.exp(-3*a))).addScaledVector(unitV(r[3],r[4]),.25*a);c.y+=.3*a;
+      const ang=r[5]*6.2831853,ca=Math.cos(ang)*sz/2,sa=Math.sin(ang)*sz/2,X=_r.clone().multiplyScalar(ca).addScaledVector(_u,sa),Y=_r.clone().multiplyScalar(-sa).addScaledVector(_u,ca);
+      const al=S.opacity*Math.min(1,a*8)*Math.pow(1-kk,1.4);
+      pQuad(PB.smoke,c.clone().sub(X).sub(Y),c.clone().add(X).sub(Y),c.clone().add(X).add(Y),c.clone().sub(X).add(Y),[u0,v0,u1,v0,u1,v1,u0,v1],[_c.r,_c.g,_c.b,al]);});}
+    if(FX.drops.on){const D=FX.drops;_c.set(D.color);born(Math.round(D.count),202,.65,1,(p,v,a,r)=>{
+      const life=(1.1+.5*r[0])*(D.life||1);if(a>life)return;const vel=v.multiplyScalar((.3+.25*r[1])*D.speed).addScaledVector(unitV(r[2],r[3]),1.2*D.speed);vel.y+=.8;
+      const G=9.8,pos=p.addScaledVector(vel,a);pos.y-=.5*G*a*a;const vc=vel.clone();vc.y-=G*a;
+      const rad=(.01+.015*r[4])*D.size,st=Math.min(3.5,1+vc.length()/5),dir=vc.normalize();
+      pStreak(PB.drops,pos.clone().addScaledVector(dir,-rad*st),pos.clone().addScaledVector(dir,rad*st),rad,[_c.r,_c.g,_c.b,Math.min(1,(life-a)*4)]);});}
+    if(FX.sparks.on){const K=FX.sparks;_c.set(K.color);born(Math.round(K.count),101,.8,1.02,(p,v,a,r)=>{
+      const life=(.3+.55*r[0])*(K.life||1);if(a>life)return;const vel=v.multiplyScalar((.25+.5*r[1])*K.speed).addScaledVector(unitV(r[2],r[3]),3.5*K.speed);
+      const dr=Math.exp(-a*2.2),G=3.5,pos=p.addScaledVector(vel,a*dr);pos.y-=.5*G*a*a;const vc=vel.multiplyScalar(dr);vc.y-=G*a;const kk=1-a/life;
+      pStreak(PB.sparks,pos.clone().addScaledVector(vc,-.03*(K.len||1)),pos,.006*K.size*(.4+kk),[_c.r,_c.g,_c.b,kk]);});}
+  }
+  PB.sparks.m.material.uniforms.hdr.value=+FX.sparks.hdr*SPARK_GAIN;
+  for(const k in PB){const B=PB[k],g=B.m.geometry;if(!B.n)continue;B.m.visible=true;g.setDrawRange(0,B.n*6);g.attributes.position.needsUpdate=g.attributes.uv.needsUpdate=g.attributes.pcol.needsUpdate=true;}
+}
+
+// ---------- side panel: one-click roll, effect tiles, effect sliders, texture-shape chips ----------
+function rollAll(){roll();window.BTG_roll2&&window.BTG_roll2();window.BTG_roll3();}
+$('rollAll4').onclick=rollAll;
+$('play4').onclick=()=>{$('pause4').checked=!$('pause4').checked;$('play4').textContent=$('pause4').checked?'▶':'⏸';};
+$('pause4').addEventListener('change',()=>$('play4').textContent=$('pause4').checked?'▶':'⏸');
+const FXT=[['refrW','折射','波纹'],['refrR','折射','一圈一圈'],['sparks','火星','发光'],['drops','液体','飞溅'],['smoke','拖烟','烟雾帧动画']];
+FXT.forEach(([id,t,sm])=>{const b=document.createElement('button');b.dataset.fx=id;b.innerHTML=`${t}<small>${sm}</small>`;b.onclick=()=>toggleFx(id);$('fx4').appendChild(b);});
+function toggleFx(id){
+  if(id==='refrW'||id==='refrR'){const mode=id==='refrW'?'wave':'ring',L=layers.find(x=>x.blend==='refract');
+    if(L&&L.refrMode===mode){scene.remove(L.mesh);layers=layers.filter(x=>x!==L);}
+    else if(L){L.refrMode=mode;syncLayer(L);}
+    else{const b=layers[0]||{width:80,life:.4};layers.push(makeLayer({name:'折射',blend:'refract',refrMode:mode,refrAmt:16,width:+b.width+10,life:Math.min(.5,+b.life),maskAmt:.8,erodeAmt:.9,taper:.4,narrow:.3}));}
+    renderLayers();}
+  else setFX({[id]:{on:FX[id].on?0:1}}).catch(e=>console.error(e));
+  syncFxUI();
+}
+function syncFxUI(){
+  const L=layers.find(x=>x.blend==='refract');
+  for(const b of $('fx4').children){const id=b.dataset.fx;b.classList.toggle('on',id==='refrW'?!!L&&L.refrMode!=='ring':id==='refrR'?!!L&&L.refrMode==='ring':!!FX[id].on);}
+  if(typeof fxRows!=='undefined')fxRows.forEach(f=>f());
+}
+const FXP=[['sparks','火星',[['count','数量',0,300,1],['hdr','亮度 HDR',0,12,.1],['speed','速度',.2,3,.05],['size','粗细',.3,4,.05],['color','颜色','col']]],
+  ['drops','液体',[['count','数量',0,120,1],['speed','速度',.2,3,.05],['size','大小',.3,4,.05],['color','颜色','col']]],
+  ['smoke','拖烟',[['count','数量',0,120,1],['opacity','浓度',0,1,.01],['size','大小',.3,4,.05],['life','寿命 ×',.3,3,.05],['tint','颜色','col']]]];
+const fxRows=[];
+FXP.forEach(([g,name,rows])=>{const cap=document.createElement('div');cap.className='cap';cap.textContent=name;$('fxp4').appendChild(cap);
+  rows.forEach(([k,label,a,b,c])=>{const d=document.createElement('div');d.className='row';const inp=document.createElement('input');const out=document.createElement('output');
+    if(a==='col')inp.type='color';else{inp.type='range';inp.min=a;inp.max=b;inp.step=c;}
+    const show=()=>{inp.value=FX[g][k];out.textContent=a==='col'?'':(+FX[g][k]).toFixed(c>=1?0:2);};show();fxRows.push(show);
+    inp.oninput=()=>{FX[g][k]=a==='col'?inp.value:+inp.value;show();};
+    const lb=document.createElement('label');lb.textContent=label;d.append(lb,inp,out);$('fxp4').appendChild(d);});});
+window.BTG_fillShapePre&&window.BTG_fillShapePre();window.BTG_fillHlPre&&window.BTG_fillHlPre();
+{const src=$('styles'),dst=$('maskPre4');
+  const mirror=()=>[...dst.children].forEach((b,i)=>b.classList.toggle('on',src.children[i].classList.contains('on')));
+  [...src.children].forEach((sb,i)=>{const b=document.createElement('button');b.textContent=sb.textContent;b.onclick=()=>{sb.click();if(i===0)window.BTG_roll2();mirror();};dst.appendChild(b);});
+  src.addEventListener('click',mirror);mirror();}
+syncFxUI();
+
+window.addEventListener('btg-tab',e=>{if(e.detail===4){if(!window.BTG_M)window.BTG_ensureMask&&window.BTG_ensureMask();if(!window.BTG_HL)window.BTG_roll3();if(!ready)init();else{refreshTex();resize();}}
+  if(e.detail===3&&!window.BTG_HL)window.BTG_roll3();});
+// ===================== home page (v11): pick an item -> one random button -> history; quick controls + folded details =====================
+// One "UI trail" = layer 0 (主体 + 高光 + 啃咬 + 溶解 in one shader) + an optional refraction layer. 更多设置 shows the same layers (synced).
+const U={sel:'main',bg:'dark',
+  main:{color:'#2b4bd8',blend:'ink',alpha:.95,hdr:1,width:80,life:.4,taper:.55,narrow:.6,off:[0,0],maskAmt:.3,turbAmt:0,turbTile:2.2,oldColor:'#202126',ageAmt:0},
+  hl:{on:1,color:'#ffb347',amt:2,off:[0,0]},
+  gnaw:{on:1,amt:.18,speed:.6,blur:0,tile:1.2,off:[0,0],style:'any'},
+  diss:{speed:.7,blur:0,off:[0,0],edgeGlow:0,edgeColor:'#c99a45',edgeW:.08,sharp:6,tile:.6,pan:-.35},
+  refr:{on:0,mode:'wave',amt:16},
+  link:{sparks:1,drops:1,smoke:1}};
+const G={gnaw:null,refr:null};   // generated grey arrays for 啃咬 / 折射
+const ITEMS=[['main','主体'],['gnaw','啃咬'],['diss','溶解'],['hl','高光'],['refr','折射'],['sparks','火星'],['smoke','烟雾'],['drops','液体'],['all','全部']];
+const rnd=(a,b)=>a+(b-a)*Math.random(),pick=a=>a[Math.floor(Math.random()*a.length)];
+const mkTex=g=>{const t=greyTex(g.a,g.w,g.h,1,true,true);return t;};
+function genMask(style){   // a mask array without touching the dissolve mask (window.BTG_M) the export uses
+  const keepM=window.BTG_M,Q=window.BTG_Q,keepQ=Q?JSON.stringify(Q):null,on=window.BTG_onTex;window.BTG_onTex=null;
+  try{window.BTG_mask(style||null);const m=window.BTG_M;return {a:Float32Array.from(m.M),w:m.MS,h:m.MS,style:window.BTG_Q&&window.BTG_Q.style};}
+  finally{window.BTG_M=keepM;if(Q&&keepQ)Object.assign(Q,JSON.parse(keepQ));window.BTG_onTex=on;}
+}
+// ---------- colours: particles follow the trail (no random colour jumps) ----------
+const mixHex=(a,b,k)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return '#'+A.lerp(B,k).getHexString();};
+const BLOOM_DARK=.55;let SPARK_GAIN=1;   // UI only: sparks follow 高光/主体 brightness (REC keeps 1)
+function sparkGain(){const m=U.main,h=U.hl;let g=h.on?Math.min(1,h.amt/2):(m.blend==='glow'?Math.min(1,m.hdr/1.5):.7);if(U.bg==='light')g*=.6;return Math.max(0,g);}
+// keep 主体 readable against the backdrop: dark ink on dark checker -> lighten, light colour on light checker -> darken
+function fixContrast(){const m=U.main,o={};const c=new THREE.Color(m.color);c.getHSL(o);let l=o.l;
+  if(U.bg==='dark'&&l<.42)l=Math.min(.62,.45+(.42-l)*.45);else if(U.bg==='light'&&m.blend!=='glow'&&l>.45)l=Math.max(.08,.45-(l-.45)*.6);
+  if(l!==o.l)m.color='#'+c.setHSL(o.h,o.s,l).getHexString();
+  if(U.bg==='light'){const q={},hc=new THREE.Color(U.hl.color);hc.getHSL(q,THREE.SRGBColorSpace);if(q.l>.55)U.hl.color='#'+hc.setHSL(q.h,Math.max(q.s,.8),.46,THREE.SRGBColorSpace).getHexString();}}
+function linkColors(){
+  if(U.link.sparks)FX.sparks.color=U.hl.on?U.hl.color:mixHex(U.main.color,'#ffffff',.35);
+  if(U.link.drops)FX.drops.color=U.main.color;
+  if(U.link.smoke)FX.smoke.tint=mixHex(U.main.color,'#ffffff',.45);
+}
+// ---------- U -> layers ----------
+let LM=null,LR=null;
+function applyUI(){
+  fixContrast();linkColors();SPARK_GAIN=sparkGain();
+  if(!LM||!layers.includes(LM)){for(const L of layers)scene.remove(L.mesh);LM=makeLayer({name:'主体'});layers=[LM];LR=null;}
+  const m=U.main,h=U.hl,g=U.gnaw,d=U.diss;
+  Object.assign(LM,{color:m.color,blend:m.blend,alpha:m.alpha,hdr:m.hdr,width:m.width,life:m.life,taper:m.taper,narrow:m.narrow,maskAmt:m.maskAmt,
+    turbAmt:m.turbAmt,turbTile:m.turbTile,oldColor:m.oldColor,ageAmt:m.ageAmt,shape:'shape',
+    hl:h.on?h.amt:0,hlColor:h.color,hlAlpha:h.on?1:0,
+    erodeAmt:d.speed,erodeSharp:d.sharp,edgeW:d.edgeW,edgeGlow:d.edgeGlow,edgeColor:d.edgeColor,maskTile:d.tile,maskPan:d.pan,maskBlur:d.blur,
+    gnawAmt:g.on&&G.gnaw?g.amt:0,gnawPan:g.speed,gnawTile:g.tile,gnawBlur:g.blur,gnawTex:G.gnawTex||null,
+    // arrows: off[0] + = towards the tail, off[1] + = outwards (shape/highlight sample at U,V; masks at distance,V)
+    shapeOff:[-m.off[0],-m.off[1]],hlOff:[-h.off[0],-h.off[1]],maskOff:[d.off[0]*2,-d.off[1]],gnawOff:[g.off[0]*2,-g.off[1]]});
+  syncLayer(LM);
+  if(U.refr.on){if(!LR||!layers.includes(LR)){LR=makeLayer({name:'折射'});layers.push(LR);}
+    Object.assign(LR,{blend:'refract',refrMode:U.refr.mode,refrAmt:U.refr.amt,width:m.width+10,life:Math.min(.5,m.life),maskAmt:.8,erodeAmt:.9,taper:.4,narrow:.3,maskTex:G.refrTex||null});syncLayer(LR);}
+  else if(LR){scene.remove(LR.mesh);layers=layers.filter(x=>x!==LR);LR=null;}
+  for(const k of ['sparks','drops','smoke'])if(FX[k].on&&k==='smoke')needSmoke();
+  window.BTG_GNAW=U.gnaw.on?G.gnaw:null;
+  renderLayers();syncFxUI();uiMarks();refreshPanel();
+}
+let applyQ=false;const apply=()=>{if(applyQ)return;applyQ=true;requestAnimationFrame(()=>{applyQ=false;applyUI();});};
+// ---------- checker backdrop (light / dark) ----------
+const BACK={light:{sky:'#d3d5d9',a:'#e6e6e8',b:'#dadbde',line:'#c6c8cd'},dark:{sky:'#14161a',a:'#2c2f36',b:'#262930',line:'#383c45'}};
+function setBackdrop(k){U.bg=k;const B=BACK[k];window.BTG_rec.opts({bg:B.sky,bloom:k==='light'?.3:BLOOM_DARK});$('bloom4o').textContent=(+$('bloom4').value).toFixed(2);window.BTG_rec.floor(true,{y:-.15,fog0:6,fog1:14});
+  const T=window.BTG_rec._fl.material.map,c=T.image,x=c.getContext('2d');x.fillStyle=B.a;x.fillRect(0,0,256,256);x.fillStyle=B.b;x.fillRect(0,0,128,128);x.fillRect(128,128,128,128);
+  x.fillStyle=B.line;for(const p of [0,128,256]){x.fillRect(p-1.5,0,3,256);x.fillRect(0,p-1.5,256,3);}
+  T.magFilter=THREE.LinearFilter;T.minFilter=THREE.LinearMipmapLinearFilter;T.generateMipmaps=true;T.needsUpdate=true;
+  [...$('bgsw4').children].forEach(b=>b.classList.toggle('on',b.dataset.bg===k));}
+[...$('bgsw4').children].forEach(b=>b.onclick=()=>{setBackdrop(b.dataset.bg);if(U.fog&&U.fog.on)applyFog();applyUI();});
+// ---------- random per item + history ----------
+const HIST={};ITEMS.forEach(([k])=>HIST[k]=[]);
+function thumbGrey(a,w,h,flip){const c=document.createElement('canvas');c.width=120;c.height=50;const x=c.getContext('2d'),im=x.createImageData(120,50);
+  for(let y=0;y<50;y++)for(let i=0;i<120;i++){const sy=Math.floor(y/50*h),sx=Math.floor(i/120*w),r=flip?h-1-sy:sy,g=Math.round(Math.min(1,Math.max(0,a[r*w+sx]))*255),o=(y*120+i)*4;im.data[o]=im.data[o+1]=im.data[o+2]=g;im.data[o+3]=255;}
+  x.putImageData(im,0,0);return c;}
+function thumbFx(o,col){const c=document.createElement('canvas');c.width=120;c.height=50;const x=c.getContext('2d');x.fillStyle='#24262c';x.fillRect(0,0,120,50);
+  x.fillStyle=col;const R=(n,s)=>{let a=s;return()=>(a=(a*16807)%2147483647)/2147483647;},r=R(0,7+Math.round((o.count||10)*13+(o.life||1)*101));
+  for(let i=0;i<Math.min(60,o.count||20);i++){const px=r()*120,py=r()*50,l=6*(o.len||1)*(o.size||1);x.globalAlpha=.85;x.fillRect(px,py,Math.max(2,l),2);}x.globalAlpha=1;return c;}
+const SNAP={
+  main:()=>{const sn={a:Float32Array.from(TEX),w:TW,h:TH,S:JSON.parse(JSON.stringify(S))},col=[U.main.color,U.main.blend,U.main.hdr],t=thumbGrey(sn.a,sn.w,sn.h,!!sn.S.outerBottom);t.getContext('2d').fillStyle=col[0];t.getContext('2d').fillRect(0,40,120,10);
+    return {thumb:t,restore:()=>{Object.assign(S,sn.S);TEX=sn.a;TW=sn.w;TH=sn.h;refreshTex('shape');[U.main.color,U.main.blend,U.main.hdr]=col;}};},
+  hl:()=>{const h=window.BTG_HL,sn={data:Float32Array.from(h.data),w:h.w,h:h.h,outerBottom:h.outerBottom},col=U.hl.color,t=thumbGrey(sn.data,sn.w,sn.h,!!sn.outerBottom);t.getContext('2d').fillStyle=col;t.getContext('2d').fillRect(0,40,120,10);
+    return {thumb:t,restore:()=>{window.BTG_HL=sn;refreshTex('hl');U.hl.color=col;}};},
+  diss:()=>{const m=window.BTG_M,sn={M:Float32Array.from(m.M),MS:m.MS};return {thumb:thumbGrey(sn.M,sn.MS,sn.MS),restore:()=>{window.BTG_M=sn;refreshTex('mask');}};},
+  gnaw:()=>{const g=G.gnaw,t=G.gnawTex;return {thumb:thumbGrey(g.a,g.w,g.h),restore:()=>{G.gnaw=g;G.gnawTex=t;apply();}};},
+  refr:()=>{const g=G.refr,t=G.refrTex,mode=U.refr.mode;return {thumb:thumbGrey(g.a,g.w,g.h),restore:()=>{G.refr=g;G.refrTex=t;U.refr.mode=mode;U.refr.on=1;apply();}};},
+  sparks:()=>fxSnap('sparks'),smoke:()=>fxSnap('smoke'),drops:()=>fxSnap('drops'),
+  all:()=>{const parts=['main','hl','diss','gnaw','refr','sparks','smoke','drops'].map(k=>SNAP[k]()),col=JSON.parse(JSON.stringify({m:[U.main.color,U.main.blend,U.main.hdr],h:U.hl.color,l:U.link}));
+    const c=parts[0].thumb,x=c.getContext('2d');x.fillStyle=col.m[0];x.fillRect(0,38,60,12);x.fillStyle=col.h;x.fillRect(60,38,60,12);
+    return {thumb:c,restore:()=>{parts.forEach(p=>p.restore());[U.main.color,U.main.blend,U.main.hdr]=col.m;U.hl.color=col.h;Object.assign(U.link,col.l);}};},
+};
+function fxSnap(k){const o=JSON.parse(JSON.stringify(FX[k]));delete o.color;delete o.tint;   // colours stay as they are now
+  return {thumb:thumbFx(o,k==='smoke'?FX.smoke.tint:FX[k].color),restore:()=>{Object.assign(FX[k],o);setFX({});apply();}};}
+const RND={
+  main:()=>roll(),
+  hl:()=>window.BTG_roll3(),
+  diss:()=>window.BTG_roll2(),
+  gnaw:()=>{G.gnaw=genMask(null);G.gnawTex&&G.gnawTex.dispose();G.gnawTex=mkTex(G.gnaw);U.gnaw.on=1;},
+  refr:()=>{G.refr=genMask(null);G.refrTex&&G.refrTex.dispose();G.refrTex=mkTex(G.refr);U.refr.mode=pick(['wave','ring']);U.refr.on=1;},
+  sparks:()=>Object.assign(FX.sparks,{on:1,count:Math.round(rnd(16,40)),len:+rnd(.5,2).toFixed(2),life:+rnd(.6,1.4).toFixed(2),speed:+rnd(.6,1.3).toFixed(2),size:+rnd(.6,1.2).toFixed(2)}),
+  smoke:()=>{Object.assign(FX.smoke,{on:1,count:Math.round(rnd(10,26)),life:+rnd(.6,1.4).toFixed(2),size:+rnd(.7,1.4).toFixed(2),opacity:+rnd(.3,.6).toFixed(2)});},
+  drops:()=>Object.assign(FX.drops,{on:1,count:Math.round(rnd(8,40)),life:+rnd(.6,1.6).toFixed(2),size:+rnd(.6,1.8).toFixed(2),speed:+rnd(.7,1.6).toFixed(2)}),
+};
+// colour scheme for 全部: main + highlight from one hue family; particles re-link and follow
+const hsl=(h,s,l)=>'#'+new THREE.Color().setHSL(((h%360)+360)%360/360,s,l,THREE.SRGBColorSpace).getHexString();
+const hueOf=c=>{const o={};new THREE.Color(c).getHSL(o);return o.h*360;};
+const mainCol=h=>{if(U.bg==='light')U.main.blend='ink';U.main.color=U.main.blend==='glow'?hsl(h,rnd(.7,.95),rnd(.5,.62)):hsl(h,rnd(.55,.9),U.bg==='light'?rnd(.16,.28):rnd(.2,.34));U.main.hdr=U.main.blend==='glow'?+rnd(.7,1).toFixed(2):1;};
+const hlCol=h=>{U.hl.color=U.bg==='light'?hsl(h,rnd(.85,1),rnd(.4,.5)):hsl(h,rnd(.8,1),rnd(.6,.72));U.hl.amt=+(U.main.blend==='glow'?rnd(.8,1.2):rnd(1.1,1.6)).toFixed(2);};
+RND.colors=()=>{const h=Math.random()*360;U.main.blend=Math.random()<.3?'glow':'ink';mainCol(h);hlCol(h+rnd(-50,50));U.link.sparks=U.link.drops=U.link.smoke=1;};
+// 主体 / 高光 random = new texture + new colour in the other one's hue family; effects follow (linkColors)
+RND.main=()=>{roll();mainCol(hueOf(U.hl.color)+rnd(-50,50));};
+RND.hl=()=>{window.BTG_roll3();hlCol(hueOf(U.main.color)+rnd(-50,50));};
+RND.all=()=>{RND.colors();for(const k of ['diss','gnaw','refr','sparks','smoke','drops']){RND[k]();pushHist(k);}roll();window.BTG_roll3();pushHist('main');pushHist('hl');};
+function pushHist(k){const e=SNAP[k]();HIST[k].unshift(e);if(HIST[k].length>8)HIST[k].pop();HIST[k].on=0;}
+function randomSel(){const k=U.sel;RND[k]();if(k==='smoke'||k==='all')needSmoke().then(()=>{});pushHist(k);setFX({});apply();showHist();restartSwing();}
+function showHist(){const box=$('hist4'),H=HIST[U.sel];box.innerHTML='';
+  if(!H.length){box.innerHTML='<div class="empty">还没有记录，点上面的 🎲</div>';return;}
+  H.forEach((e,i)=>{e.thumb.className=i===H.on?'on':'';e.thumb.title='换回这一次';e.thumb.onclick=()=>{e.restore();H.on=i;showHist();apply();};box.appendChild(e.thumb);});}
+$('rand4').onclick=randomSel;
+window.addEventListener('keydown',e=>{if(window.BTG_tab===4&&e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();e.stopImmediatePropagation();randomSel();}},true);
+// ---------- control builders ----------
+const PN={};
+function qslider(box,label,o,k,mn,mx,st,cb){const d=document.createElement('div');d.className='qrow';const i=document.createElement('input');i.type='range';i.min=mn;i.max=mx;i.step=st;const out=document.createElement('output');
+  const show=()=>{i.value=o()[k];out.textContent=(+o()[k]).toFixed(st>=1?0:2);};i.oninput=()=>{o()[k]=+i.value;out.textContent=(+i.value).toFixed(st>=1?0:2);cb&&cb();apply();};
+  const l=document.createElement('label');l.textContent=label;d.append(l,i,out);box.appendChild(d);refreshers.push(show);}
+function qcolor(box,label,o,k,cb){const d=document.createElement('div');d.className='qrow';const i=document.createElement('input');i.type='color';
+  const show=()=>i.value=o()[k];i.oninput=()=>{o()[k]=i.value;cb&&cb();apply();};const l=document.createElement('label');l.textContent=label;d.append(l,i,document.createElement('span'));box.appendChild(d);refreshers.push(show);}
+function qswitch(box,label,opts,o,k,cb){const d=document.createElement('div');d.className='qrow';const sw=document.createElement('div');sw.className='sw';sw.style.gridColumn='2/4';
+  opts.forEach(([v,t])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{o()[k]=v;cb&&cb(v);apply();};b.dataset.v=String(v);sw.appendChild(b);});
+  const show=()=>[...sw.children].forEach(b=>b.classList.toggle('on',b.dataset.v===String(o()[k])));
+  const l=document.createElement('label');l.textContent=label;d.append(l,sw);box.appendChild(d);refreshers.push(show);}
+function qdpad(box,o,step=.04){const d=document.createElement('div');d.className='qrow';const w=document.createElement('div');w.className='dwrap';w.style.gridColumn='2/4';
+  const p=document.createElement('div');p.className='dpad';const info=document.createElement('small');
+  const B=(t,col,row,f,tip)=>{const b=document.createElement('button');b.textContent=t;b.title=tip;b.style.gridColumn=col;b.style.gridRow=row;b.onclick=()=>{f(o().off);apply();};p.appendChild(b);};
+  B('↑',2,1,v=>v[1]+=step,'向外');B('←',1,2,v=>v[0]-=step,'向武器方向');B('·',2,2,v=>{v[0]=0;v[1]=0;},'归位');B('→',3,2,v=>v[0]+=step,'向尾巴方向');B('↓',2,3,v=>v[1]-=step,'向里');
+  const show=()=>{const v=o().off;info.innerHTML=`← 武器 · 尾巴 →<br>↑ 外 · 里 ↓<br>${v[0]>=0?'+':''}${v[0].toFixed(2)} / ${v[1]>=0?'+':''}${v[1].toFixed(2)}`;};
+  const l=document.createElement('label');l.textContent='位置';w.append(p,info);d.append(l,w);box.appendChild(d);refreshers.push(show);}
+function qchips(box,label,list,get,set){const cap=document.createElement('div');cap.className='cap';cap.textContent=label;const c=document.createElement('div');c.className='chips';
+  list.forEach(([v,t])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{set(v);refreshPanel();};b.dataset.v=String(v);c.appendChild(b);});
+  refreshers.push(()=>[...c.children].forEach(b=>b.classList.toggle('on',b.dataset.v===String(get()))));box.append(cap,c);}
+function details(box,title){const d=document.createElement('details');d.innerHTML=`<summary>${title}</summary>`;box.appendChild(d);return d;}
+const refreshers=[];function refreshPanel(){refreshers.forEach(f=>f());}
+const onOff=[[1,'开'],[0,'关']];
+function panel(k){const p=document.createElement('div');p.className='pnl';p.hidden=true;$('panels4').appendChild(p);PN[k]=p;return p;}
+// 主体
+{const p=panel('main'),o=()=>U.main;
+  qcolor(p,'颜色',o,'color');qdpad(p,o);qswitch(p,'混合',[['ink','半透明墨'],['glow','发光']],o,'blend');
+  const d=details(p,'详细');qslider(d,'不透明',o,'alpha',0,1,.01);qslider(d,'亮度',o,'hdr',0,8,.05);qslider(d,'宽度 cm',o,'width',10,150,1);qslider(d,'寿命 s',o,'life',.05,1,.01);
+  qslider(d,'尾端收窄',o,'taper',0,.95,.01);qslider(d,'窗口收窄',o,'narrow',0,2,.05);qslider(d,'斑驳',o,'maskAmt',0,1,.01);qslider(d,'细节扰动',o,'turbAmt',0,.6,.01);qslider(d,'扰动密度',o,'turbTile',.5,8,.1);
+  qcolor(d,'老化颜色',o,'oldColor');qslider(d,'随年龄变色',o,'ageAmt',0,1,.01);
+  const pre=document.createElement('div');pre.className='chips shapePre';const cap=document.createElement('div');cap.className='cap';cap.textContent='形状预设（🎲 只在这类里随机）';d.append(cap,pre);}
+// 啃咬
+{const p=panel('gnaw'),o=()=>U.gnaw;
+  qswitch(p,'啃咬',onOff,o,'on');qdpad(p,o,.05);qslider(p,'移动速度',o,'speed',-3,3,.05);qslider(p,'模糊',o,'blur',0,5,.1);
+  const d=details(p,'详细');qslider(d,'孔的大小',o,'amt',0,.9,.01);qslider(d,'疏密',o,'tile',.2,5,.05);
+  qchips(d,'啃咬样式（🎲 只在这类里随机）',[['any','全部'],['holes','孔洞'],['shard','碎块'],['crack','裂纹'],['ink','墨迹'],['smoke','云雾'],['burn','烧蚀'],['dry','干笔'],['streak','风丝']],()=>U.gnaw.style,v=>{U.gnaw.style=v;G.gnaw=genMask(v==='any'?null:v);G.gnawTex&&G.gnawTex.dispose();G.gnawTex=mkTex(G.gnaw);pushHist('gnaw');showHist();apply();});
+  RND.gnaw=(f=>()=>{const st=U.gnaw.style;G.gnaw=genMask(st&&st!=='any'?st:null);G.gnawTex&&G.gnawTex.dispose();G.gnawTex=mkTex(G.gnaw);U.gnaw.on=1;})(RND.gnaw);}
+// 溶解
+{const p=panel('diss'),o=()=>U.diss;
+  qdpad(p,o,.05);qslider(p,'溶解速度',o,'speed',0,2,.01);qslider(p,'模糊',o,'blur',0,5,.1);
+  const d=details(p,'详细');qslider(d,'边缘亮度',o,'edgeGlow',0,4,.05);qcolor(d,'边缘颜色',o,'edgeColor');qslider(d,'边缘宽',o,'edgeW',.01,.4,.01);qslider(d,'硬度',o,'sharp',1,20,.5);
+  qslider(d,'疏密',o,'tile',.1,3,.05);qslider(d,'滑动',o,'pan',-2,2,.05);
+  const cap=document.createElement('div');cap.className='cap';cap.textContent='溶解样式（🎲 只在这类里随机）';const mp=document.createElement('div');mp.className='chips';mp.id='maskPreH';d.append(cap,mp);
+  const src=$('styles');const mirror=()=>[...mp.children].forEach((b,i)=>b.classList.toggle('on',src.children[i].classList.contains('on')));
+  [...src.children].forEach((sb,i)=>{const b=document.createElement('button');b.textContent=sb.textContent;b.onclick=()=>{sb.click();if(i===0)window.BTG_roll2();pushHist('diss');showHist();mirror();};mp.appendChild(b);});mirror();}
+// 高光
+{const p=panel('hl'),o=()=>U.hl;
+  qswitch(p,'高光',onOff,o,'on');qcolor(p,'颜色',o,'color');qslider(p,'亮度',o,'amt',0,8,.05);qdpad(p,o);
+  const d=details(p,'详细');const cap=document.createElement('div');cap.className='cap';cap.textContent='高光预设（🎲 只在这类里随机）';const pre=document.createElement('div');pre.className='chips hlPre';d.append(cap,pre);}
+// 折射
+{const p=panel('refr'),o=()=>U.refr;qswitch(p,'折射',onOff,o,'on',v=>{if(v&&!G.refr)RND.refr();});
+  const n=document.createElement('p');n.className='note';n.textContent='折射只需要随机：每次 🎲 换一张扭曲贴图，并在「波纹 / 一圈一圈」之间随机。';p.appendChild(n);}
+// 火星 / 烟雾 / 液体
+function linkRow(box,k){const d=document.createElement('div');d.className='qrow';const b=document.createElement('button');b.style.gridColumn='2/4';
+  const show=()=>{b.textContent=U.link[k]?'✓ 颜色跟随主体 / 高光':'颜色已手动设定 · 点这里恢复跟随';b.classList.toggle('primary',!U.link[k]);};
+  b.onclick=()=>{U.link[k]=1;apply();};const l=document.createElement('label');l.textContent='';d.append(l,b);box.appendChild(d);refreshers.push(show);}
+{const p=panel('sparks'),o=()=>FX.sparks;qswitch(p,'火星',onOff,o,'on');qcolor(p,'颜色',o,'color',()=>U.link.sparks=0);linkRow(p,'sparks');qslider(p,'长度',o,'len',.2,4,.05);qslider(p,'寿命 ×',o,'life',.2,3,.05);
+  const d=details(p,'详细');qslider(d,'数量',o,'count',0,300,1);qslider(d,'亮度 HDR',o,'hdr',0,12,.1);qslider(d,'速度',o,'speed',.2,3,.05);qslider(d,'粗细',o,'size',.3,4,.05);}
+{const p=panel('smoke'),o=()=>FX.smoke;qswitch(p,'烟雾',onOff,o,'on',v=>{if(v)needSmoke();});qcolor(p,'颜色',o,'tint',()=>U.link.smoke=0);linkRow(p,'smoke');qslider(p,'寿命 ×',o,'life',.3,3,.05);
+  const d=details(p,'详细');qslider(d,'数量',o,'count',0,120,1);qslider(d,'浓度',o,'opacity',0,1,.01);qslider(d,'大小',o,'size',.3,4,.05);}
+{const p=panel('drops'),o=()=>FX.drops;qswitch(p,'液体',onOff,o,'on');qcolor(p,'颜色',o,'color',()=>U.link.drops=0);linkRow(p,'drops');qslider(p,'寿命 ×',o,'life',.2,3,.05);
+  const d=details(p,'详细');qslider(d,'数量',o,'count',0,120,1);qslider(d,'大小',o,'size',.3,4,.05);qslider(d,'速度',o,'speed',.2,3,.05);}
+// 全部: weapon, swing, playback (the same DOM inputs the recipe / recording read)
+{const p=panel('all');const n=document.createElement('p');n.className='note';n.textContent='🎲 = 主体、啃咬、溶解、高光、折射、火星、烟雾、液体全部换一次，并给主体 / 高光换一套配色（火星、烟雾、液体跟着变）。单独随机主体 / 高光也会换颜色（和另一方同色系）；火星、烟雾、液体的颜色始终跟着主体 / 高光。';p.appendChild(n);
+  const cap=document.createElement('div');cap.className='sh';cap.textContent='武器';p.append(cap,$('weap4'),$('wInfo4'));
+  const c2=document.createElement('div');c2.className='sh';c2.textContent='挥刀';p.append(c2,$('r_dur4'),$('r_speed4'));}
+// 更多设置 (kept): scene extras, weapon fit, every layer (filled from the panels above), other exports
+{const more=$('more4');more.innerHTML='<summary>更多设置</summary>';
+  const sc=document.createElement('fieldset');sc.innerHTML='<legend>场景</legend>';const rbg=$('r_bg4');sc.append($('r_bloom4'),$('r_glow4'),$('r_pause4'),rbg);rbg.hidden=true;
+  const lc=document.createElement('div');lc.className='cap';lc.textContent='层（由上面的面板自动生成；这里可以细调，从下往上画）';
+  more.append(sc,$('wp4'),lc,$('layers4'),$('pk4'));$('ctrl4').insertBefore(more,$('bundle4'));}
+window.BTG_fillShapePre&&window.BTG_fillShapePre();window.BTG_fillHlPre&&window.BTG_fillHlPre();
+// presets chosen inside a panel re-roll that texture: record it in the history too
+document.querySelectorAll('#panels4 .shapePre button').forEach(b=>b.addEventListener('click',()=>{pushHist('main');showHist();}));
+document.querySelectorAll('#panels4 .hlPre button').forEach(b=>b.addEventListener('click',()=>{pushHist('hl');showHist();}));
+// ---------- item picker ----------
+ITEMS.forEach(([k,t])=>{const b=document.createElement('button');b.dataset.k=k;b.innerHTML=`${t}<i></i>`;b.onclick=()=>selectItem(k);$('items4').appendChild(b);});
+function isOn(k){return k==='main'||k==='diss'||k==='all'?1:k==='gnaw'?U.gnaw.on:k==='hl'?U.hl.on:k==='refr'?U.refr.on:FX[k].on;}
+function uiMarks(){for(const b of $('items4').children){const k=b.dataset.k;b.classList.toggle('on',k===U.sel);const i=b.querySelector('i');i.classList.toggle('lit',!!isOn(k));i.hidden=k==='all';}}
+function selectItem(k){U.sel=k;for(const q in PN)PN[q].hidden=q!==k;$('rand4').textContent='🎲 随机 · '+ITEMS.find(x=>x[0]===k)[1];uiMarks();showHist();refreshPanel();}
+// ---------- 体积雾 (preview only): wide low-threshold glow around bright parts + exponential distance fog ----------
+U.fog={on:0,amt:.6};let haze=null;
+function applyFog(){
+  const on=U.fog.on,a=U.fog.amt,B=BACK[U.bg];
+  if(on&&!haze){haze=new UnrealBloomPass(new THREE.Vector2(1,1),1,1,.5);const i=composer.passes.indexOf(bloom);composer.insertPass(haze,i+1);
+    const db=renderer.getDrawingBufferSize(new THREE.Vector2());haze.setSize(db.x,db.y);}
+  if(haze){haze.enabled=!!on;haze.strength=.9*a;haze.radius=1;haze.threshold=U.bg==='light'?.95:.6;}
+  if(on){const c=new THREE.Color(B.sky).lerp(new THREE.Color(U.bg==='light'?'#ffffff':'#3a4150'),.35);window.BTG_rec.opts({bg:'#'+c.getHexString()});scene.fog=new THREE.FogExp2(c,.05+.14*a);}
+  else setBackdrop(U.bg);
+  $('fog4').classList.toggle('on',!!on);
+}
+$('fog4').onclick=()=>{U.fog.on=U.fog.on?0:1;applyFog();refreshPanel();};
+{const p=PN.all;const c=document.createElement('div');c.className='sh';c.textContent='体积雾';p.appendChild(c);
+  qswitch(p,'体积雾',onOff,()=>U.fog,'on',()=>setTimeout(applyFog));qslider(p,'浓度',()=>U.fog,'amt',0,1.5,.05,()=>setTimeout(applyFog));
+  const n=document.createElement('p');n.className='note';n.textContent='只在预览里有，不进导出包。暗棋盘上效果最明显。';p.appendChild(n);}
+window.BTG_ui={U,FX,G,apply:()=>applyUI(),applyFog:()=>applyFog()};   // debugging / tests
+function uiInit(){
+  camera.position.set(1.328,3.299,2.11);controls.target.set(.62,.35,.17);controls.update();
+  setBackdrop('dark');RND.gnaw();RND.refr();U.refr.on=0;
+  for(const k of ['main','hl','diss','gnaw'])pushHist(k);
+  applyUI();selectItem('main');
+}
+
+if(!REC){document.querySelector('.tabs button[data-tab="4"]').click();uiInit();}   // the preview is the only screen
+</script>
+
+</body>
+</html>

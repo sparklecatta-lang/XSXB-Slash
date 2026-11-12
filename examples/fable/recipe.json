@@ -1,0 +1,355 @@
+{
+ "format": "XSXB-Slash-recipe",
+ "version": 1,
+ "spec": "docs/SPEC.md in the XSXB-Slash repository: strip UVs, shader formula and per-engine notes",
+ "conventions": {
+  "stripU": "U = age / lifeS of the sample: 0 at the blade (newest), 1 at the oldest end",
+  "stripV": "V = 0 inner edge (towards the hilt), 1 outer edge (the blade tip path)",
+  "dist": "metres travelled by the blade tip since the swing started (second UV channel .x)",
+  "textureRows": "top image row = outer edge (V=1). Sample at (U, 1-V) in top-left-origin engines (UE, Godot); at (U, V) in Unity",
+  "colors": "linear RGB 0..1 (colorHex is the sRGB picker value)",
+  "order": "draw layers in array order; later layers on top"
+ },
+ "constants": {
+  "erodeBase": -0.12,
+  "erodeAgePow": 1.5,
+  "erodeInner": 0.1,
+  "maskTileV": 0.8,
+  "maskAgeDrift": 0.15,
+  "detailGain": 1.6,
+  "headSoft": 0.005
+ },
+ "textures": {
+  "shape": {
+   "file": "textures/shape.png",
+   "wrap": "clamp",
+   "srgb": false,
+   "size": [
+    1024,
+    256
+   ]
+  },
+  "mask": {
+   "file": "textures/mask.png",
+   "wrap": "repeat",
+   "srgb": false,
+   "size": [
+    512,
+    512
+   ]
+  },
+  "highlight": {
+   "file": "textures/highlight.png",
+   "wrap": "clamp",
+   "srgb": false,
+   "size": [
+    1024,
+    256
+   ]
+  }
+ },
+ "layers": [
+  {
+   "name": "body",
+   "blend": "alpha",
+   "color": [
+    0.521,
+    0.5972,
+    0.88792
+   ],
+   "colorHex": "#BFCBF2",
+   "alpha": 0.96,
+   "hdr": 1,
+   "widthM": 0.8,
+   "lifeS": 0.4,
+   "taper": 0.55,
+   "windowNarrow": 0.6,
+   "shapeTexture": "shape",
+   "maskAmount": 0.55,
+   "maskTilePerM": 0.6,
+   "maskPanPerS": -0.35,
+   "erodeSpeed": 0.85,
+   "erodeSharp": 6,
+   "edgeWidth": 0.08,
+   "edgeGlow": 0,
+   "edgeColor": [
+    0.58408,
+    0.32314,
+    0.05951
+   ],
+   "highlight": 0,
+   "highlightColor": [
+    1,
+    0.64448,
+    0.19462
+   ],
+   "turbulence": {
+    "amount": 0,
+    "tilePerM": 2.2
+   },
+   "uvOffset": {
+    "shape": [
+     0,
+     0
+    ],
+    "highlight": [
+     0,
+     0
+    ],
+    "mask": [
+     0,
+     0
+    ]
+   },
+   "maskBlurLod": 0,
+   "highlightAlpha": 0,
+   "gnaw": null,
+   "ageColor": {
+    "color": [
+     0.01444,
+     0.01521,
+     0.01938
+    ],
+    "colorHex": "#202126",
+    "amount": 0
+   }
+  },
+  {
+   "name": "inner",
+   "blend": "additive",
+   "color": [
+    1,
+    0.89627,
+    0.71569
+   ],
+   "colorHex": "#fff3dc",
+   "alpha": 1,
+   "hdr": 0.32,
+   "widthM": 0.5,
+   "lifeS": 0.26,
+   "taper": 0.55,
+   "windowNarrow": 0.6,
+   "shapeTexture": "shape",
+   "maskAmount": 0.55,
+   "maskTilePerM": 0.6,
+   "maskPanPerS": -0.35,
+   "erodeSpeed": 0.85,
+   "erodeSharp": 6,
+   "edgeWidth": 0.08,
+   "edgeGlow": 0,
+   "edgeColor": [
+    0.58408,
+    0.32314,
+    0.05951
+   ],
+   "highlight": 0,
+   "highlightColor": [
+    1,
+    0.64448,
+    0.19462
+   ],
+   "turbulence": {
+    "amount": 0,
+    "tilePerM": 2.2
+   },
+   "uvOffset": {
+    "shape": [
+     0,
+     0
+    ],
+    "highlight": [
+     0,
+     0
+    ],
+    "mask": [
+     0,
+     0
+    ]
+   },
+   "maskBlurLod": 0,
+   "highlightAlpha": 0,
+   "gnaw": null,
+   "ageColor": {
+    "color": [
+     0.01444,
+     0.01521,
+     0.01938
+    ],
+    "colorHex": "#202126",
+    "amount": 0
+   }
+  },
+  {
+   "name": "gold",
+   "blend": "additive",
+   "color": [
+    1,
+    0.32314,
+    0.02732
+   ],
+   "colorHex": "#ff9a2e",
+   "alpha": 1,
+   "hdr": 2.6,
+   "widthM": 0.22,
+   "lifeS": 0.18,
+   "taper": 0.5,
+   "windowNarrow": 0.4,
+   "shapeTexture": "highlight",
+   "maskAmount": 0.8,
+   "maskTilePerM": 0.6,
+   "maskPanPerS": -0.35,
+   "erodeSpeed": 1.2,
+   "erodeSharp": 6,
+   "edgeWidth": 0.08,
+   "edgeGlow": 0,
+   "edgeColor": [
+    0.58408,
+    0.32314,
+    0.05951
+   ],
+   "highlight": 0,
+   "highlightColor": [
+    1,
+    0.64448,
+    0.19462
+   ],
+   "turbulence": {
+    "amount": 0,
+    "tilePerM": 2.2
+   },
+   "uvOffset": {
+    "shape": [
+     0,
+     0
+    ],
+    "highlight": [
+     0,
+     0
+    ],
+    "mask": [
+     0,
+     0
+    ]
+   },
+   "maskBlurLod": 0,
+   "highlightAlpha": 0,
+   "gnaw": null,
+   "ageColor": {
+    "color": [
+     0.01444,
+     0.01521,
+     0.01938
+    ],
+    "colorHex": "#202126",
+    "amount": 0
+   }
+  }
+ ],
+ "fx": {
+  "note": "preview-only in the v1 engine ports (they draw the ribbon layers); numbers are here so you can rebuild them in your engine",
+  "refraction": [],
+  "sparks": {
+   "on": 1,
+   "count": 170,
+   "color": [
+    1,
+    0.32314,
+    0.02732
+   ],
+   "hdr": 3.4,
+   "size": 1,
+   "speed": 1,
+   "len": 1,
+   "life": 1,
+   "colorHex": "#ff9a2e"
+  },
+  "drops": {
+   "on": 1,
+   "count": 30,
+   "color": [
+    0.73791,
+    0.81485,
+    1
+   ],
+   "size": 1,
+   "speed": 1,
+   "life": 1,
+   "colorHex": "#dfe9ff"
+  },
+  "smoke": {
+   "on": 1,
+   "count": 44,
+   "tint": [
+    0.7913,
+    0.80695,
+    0.88792
+   ],
+   "opacity": 0.6,
+   "size": 1.5,
+   "life": 1,
+   "flipbook": "assets/smoke_sheet_2048.png in the XSXB-Slash repo: 16x16 cells = 8 variants x 32 frames (variant v uses rows 2v, 2v+1), RGB = shade, A = mask"
+  }
+ },
+ "preview": {
+  "background": "#002FA7",
+  "bloomStrength": 0.85,
+  "bloomThreshold": 1,
+  "swingDurationS": 0.24,
+  "bladeLengthM": 1.2,
+  "hiltOffsetM": 0.2,
+  "weapon": "默认刀",
+  "previewImage": "preview.png",
+  "previewTimeS": 0.149
+ },
+ "generator": {
+  "shape": {
+   "seed": 668801,
+   "outerBottom": 1,
+   "size": 1024,
+   "strands": 59,
+   "clump": 0.5011630767839961,
+   "clusters": 4,
+   "outerDensity": 0.35295446068048475,
+   "width": 0.013720508090220393,
+   "widthVar": 0.9351934528909623,
+   "lenIn": 0.41102517836261543,
+   "lenOut": 0.8649539864109829,
+   "power": 1.419981752475724,
+   "jitter": 0.16644856514176354,
+   "lobes": 3,
+   "lobeAmp": 0.060618716168683015,
+   "headStart": 0.01226506698410958,
+   "headWave": 0.00472063161060214,
+   "headSoft": 0.007357275059446692,
+   "headMargin": 0.002,
+   "taper": 0.8706202356843278,
+   "tipPow": 1.3096116952365264,
+   "drift": 0.03771651381626725,
+   "wobble": 0.005116591747151688,
+   "intVar": 0.4180283205234446,
+   "tailFade": 0.9398095151409507,
+   "gain": 0.9385926022194326,
+   "rim": 0.7748365650186315,
+   "rimLen": 0.9172557905875146,
+   "rimWidth": 0.00768476801016368,
+   "bigU": 14,
+   "bigV": 2.5,
+   "smallU": 2.5,
+   "smallV": 0.75,
+   "mix": 0.5,
+   "margin": 0.04
+  },
+  "mask": {
+   "seed": 416739,
+   "size": 512,
+   "eq": 1,
+   "style": "smoke",
+   "p": {
+    "cells": 5,
+    "oct": 6,
+    "warp": 0.8997283624485135,
+    "stretch": 1.0587005659006536
+   }
+  }
+ }
+}
