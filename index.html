@@ -1371,9 +1371,7 @@ const nearHue=(base,prev)=>{let h=base;for(let i=0;i<8;i++){h=base+rnd(-55,55);c
 const mainCol=h=>{if(U.bg==='light')U.main.blend='ink';U.main.color=U.main.blend==='glow'?hsl(h,rnd(.7,.95),rnd(.5,.62)):hsl(h,rnd(.55,.9),U.bg==='light'?rnd(.16,.28):rnd(.2,.34));U.main.hdr=U.main.blend==='glow'?+rnd(.7,1).toFixed(2):1;};
 const hlCol=h=>{U.hl.color=U.bg==='light'?hsl(h,rnd(.85,1),rnd(.4,.5)):hsl(h,rnd(.8,1),rnd(.6,.72));U.hl.amt=+(U.main.blend==='glow'?rnd(.8,1.2):rnd(1.1,1.6)).toFixed(2);};
 RND.colors=()=>{const h=Math.random()*360;U.main.blend=Math.random()<.3?'glow':'ink';mainCol(h);hlCol(h+rnd(-50,50));U.link.sparks=U.link.drops=U.link.smoke=1;};
-// 主体 / 高光 random = new texture + new colour in the other one's hue family; effects follow (linkColors)
-RND.main=()=>{roll();mainCol(nearHue(hueOf(U.hl.color),hueOf(U.main.color)));};
-RND.hl=()=>{window.BTG_roll3();hlCol(nearHue(hueOf(U.main.color),hueOf(U.hl.color)));};
+// 主体 / 高光 random = new texture only, colours stay (user 11-12); 全部 changes the colour scheme (RND.colors)
 RND.all=()=>{RND.colors();for(const k of ['diss','gnaw','refr','sparks','smoke','drops']){RND[k]();pushHist(k);}roll();window.BTG_roll3();pushHist('main');pushHist('hl');};
 function pushHist(k){const e=SNAP[k]();HIST[k].unshift(e);if(HIST[k].length>8)HIST[k].pop();HIST[k].on=0;}
 function randomSel(){const k=U.sel;RND[k]();if(k==='smoke'||k==='all')needSmoke().then(()=>{});pushHist(k);setFX({});apply();showHist();restartSwing();}
@@ -1449,7 +1447,7 @@ function linkRow(box,k){const d=document.createElement('div');d.className='qrow'
 {const p=panel('drops'),o=()=>FX.drops;qswitch(p,'液体',onOff,o,'on');qcolor(p,'颜色',o,'color',()=>U.link.drops=0);linkRow(p,'drops');qslider(p,'寿命 ×',o,'life',.2,3,.05);
   fxChips(p,'drops');const d=details(p,'详细');qslider(d,'数量',o,'count',0,120,1);qslider(d,'大小',o,'size',.3,4,.05);qslider(d,'速度',o,'speed',.2,3,.05);}
 // 全部: weapon, swing, playback (the same DOM inputs the recipe / recording read)
-{const p=panel('all');const n=document.createElement('p');n.className='note';n.textContent='🎲 = 主体、啃咬、溶解、高光、折射、火星、烟雾、液体全部换一次，并给主体 / 高光换一套配色（火星、烟雾、液体跟着变）。单独随机主体 / 高光也会换颜色（和另一方同色系）；火星、烟雾、液体的颜色始终跟着主体 / 高光。';p.appendChild(n);
+{const p=panel('all');const n=document.createElement('p');n.className='note';n.textContent='🎲 = 主体、啃咬、溶解、高光、折射、火星、烟雾、液体全部换一次，并给主体 / 高光换一套配色（火星、烟雾、液体跟着变）。单独随机主体 / 高光只换形状，颜色不变；火星、烟雾、液体的颜色始终跟着主体 / 高光。';p.appendChild(n);
   const cap=document.createElement('div');cap.className='sh';cap.textContent='武器';p.append(cap,$('weap4'),$('wInfo4'));
   const c2=document.createElement('div');c2.className='sh';c2.textContent='挥刀';p.append(c2,$('r_dur4'),$('r_speed4'));}
 // 更多设置 (kept): scene extras, weapon fit, every layer (filled from the panels above), other exports
