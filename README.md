@@ -1,12 +1,28 @@
+<p align="center"><img src="docs/media/readme/banner.jpg" alt="XSXB-Slash 刀光生成器"></p>
+
 # XSXB-Slash 刀光生成器
 
 **中文** | [English](README_en.md)
 
 在浏览器里做游戏刀光：一键随机贴图、叠层、3D 预览挥刀，再导出一个包，放进 Unity、Godot 或 Unreal。
 
-[![演示视频（点开播放）](docs/media/demo.jpg)](docs/media/xsxb-slash-demo.mp4)
+<p align="center"><img src="docs/media/readme/demo_clip.gif" alt="连按随机的效果" width="900"></p>
 
-*点图片看演示视频（[xsxb-slash-demo.mp4](docs/media/xsxb-slash-demo.mp4)）*
+*上面是演示视频里的一小段（连按 🎲 随机）。完整视频：[xsxb-slash-demo.mp4](docs/media/xsxb-slash-demo.mp4)*
+
+## 截图
+
+![界面](docs/media/readme/ui.jpg)
+
+**样式**：每一项都有好几种生成算法，🎲 会在里面随机；也可以在「详细」里锁定一种。
+- 主体 / 高光：默认、细密丝、粗团块、短尾、均匀条、云团，新增 **月牙、碎羽、火舌、刷痕、双层**（高光另有双线、断续、月牙光等）。
+- 溶解 / 啃咬 / 折射贴图：云雾、裂纹、风丝、墨迹、烧蚀、干笔、孔洞、碎块，新增 **水纹、电纹、纸纹、像素、波浪、鳞片**。
+- 折射：波纹、一圈一圈，新增 **水波纹**（水滴涟漪交叠扩散）和 **水波+波纹**。
+- 火星：新增 爆散、上飘余烬、星点闪烁；烟雾：新增 升腾、贴地、拖尾细烟；液体：新增 顺刀甩出、滴落、雾沫。
+
+![主体与遮罩样式](docs/media/readme/styles_textures.jpg)
+![火星烟雾液体样式](docs/media/readme/styles_fx.jpg)
+![折射水波纹](docs/media/readme/refraction_ripple.jpg)
 
 ## 怎么用
 

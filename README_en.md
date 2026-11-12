@@ -1,12 +1,28 @@
+<p align="center"><img src="docs/media/readme/banner.jpg" alt="XSXB-Slash blade trail generator"></p>
+
 # XSXB-Slash
 
 [中文](README.md) | **English**
 
 A browser tool for game sword slash trails: roll random textures, stack layers, preview the swing in 3D, and export a bundle for Unity, Godot or Unreal.
 
-[![Demo video (click to play)](docs/media/demo.jpg)](docs/media/xsxb-slash-demo.mp4)
+<p align="center"><img src="docs/media/readme/demo_clip.gif" alt="Rolling random trails" width="900"></p>
 
-*Click the image for the demo video ([xsxb-slash-demo.mp4](docs/media/xsxb-slash-demo.mp4)). The UI is in Chinese.*
+*A short cut from the demo video (pressing 🎲 again and again). Full video: [xsxb-slash-demo.mp4](docs/media/xsxb-slash-demo.mp4). The UI is in Chinese.*
+
+## Screenshots
+
+![UI](docs/media/readme/ui.jpg)
+
+**Styles**: every item has several generators; 🎲 picks among them, or lock one under 详细 (details).
+- Body / highlight shapes: default, fine strands, thick clumps, short tail, even bars, cloud, plus new **crescent, feather, flame, brush, double band** (highlight also gets double line, broken, crescent glow…).
+- Dissolve / gnaw / refraction masks: cloud, crack, wind streak, ink, burn, dry brush, holes, shards, plus new **ripple, bolt, paper fibre, pixel, wave, scales**.
+- Refraction: wave, rings, plus new **water ripples** (overlapping droplet rings) and **water + wave**.
+- Sparks: new burst, rising embers, twinkle; smoke: new rise, ground, wisp; liquid: new spray, drip, mist.
+
+![Shape and mask styles](docs/media/readme/styles_textures.jpg)
+![Particle styles](docs/media/readme/styles_fx.jpg)
+![Refraction ripples](docs/media/readme/refraction_ripple.jpg)
 
 ## How to use
 

@@ -101,8 +101,11 @@ These are extra keys; the v1 engine ports ignore them and still draw the ribbon 
 
 - `layers[].turbulence {amount, tilePerM}`: detail wobble. In the preview: `n = noise(dist*tilePerM + time*0.5, V*1.7 + age*0.4) - 0.5; sv += n*amount; U += n*amount*0.3` before the shape lookup.
 - `layers[].ageColor {color, amount}`: `col = mix(color, ageColor.color, smoothstep(0.2, 0.95, age) * amount)`.
-- `fx.refraction[]`: screen-space distortion under a trail-shaped mask. `shape` = `wave` (sin/cos field) or `ring` (rings spreading from the pivot); `strengthPx720` = offset in pixels at 720p. These layers are not in `layers`.
+- `fx.refraction[]`: screen-space distortion under a trail-shaped mask. `shape` = `wave` (sin/cos field), `ring` (rings spreading from the pivot), `ripple` (v12: water ripples, see below) or `mix` (0.6 × wave + 0.8 × ripple); `strengthPx720` = offset in pixels at 720p. These layers are not in `layers`.
+  - `ripple`: screen space in 720p pixels `px`. Seeds on a 110 px grid, each jittered by `h = hash2(cell)` to `(cell + 0.15 + 0.7h) * 110`. For the 3×3 cells around `px`: `ph = fract(time*0.9 + h.x*7.13 + h.y*3.7)`, `rad = ph*160`, `e = px - seed`, `q = (|e| - rad)/24`; `offset += sin((|e| - rad)*0.19) * exp(-q²) * (1 - ph) * e/|e|`. Total `offset * 16 * 1.6 * amount`. `time` = sim time.
 - `fx.sparks / fx.drops / fx.smoke`: particle settings (count per swing, colour, size, speed). The smoke flipbook is `assets/smoke_sheet_2048.png` (16x16 cells = 8 variants x 32 frames; RGB = shade, A = mask).
+  - v12 `style` (missing = the original look): sparks `burst` (fast short radial streaks, strong drag), `ember` (slow rising dots that flicker), `twinkle` (dots that stay near the blade path and blink); smoke `rise` (climbs, grows ×1.35), `ground` (sinks to the floor and spreads), `wisp` (stays where it was born, small, lives ×1.4); drops `spray` (thrown along the swing), `drip` (hangs 0.12–0.47 s, then falls straight down), `mist` (×2.5 count, tiny, light gravity, short life).
+- Texture styles (v12) are baked into the exported PNGs, so the recipe and engine shaders do not change: shape/highlight `crescent`, `feather`, `flame`, `brush`, `double`; mask `ripple`, `bolt`, `fiber`, `pixel`, `wave`, `scale` (all tileable).
 - `preview.bladeLengthM / hiltOffsetM` now follow the loaded weapon (glb); `widthM` already includes the weapon's width scale.
 
 ## 5. Self-check (do this after every port)
