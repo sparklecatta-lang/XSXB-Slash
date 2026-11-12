@@ -1290,7 +1290,8 @@ const mixHex=(a,b,k)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return '#
 const BLOOM_DARK=.55;let SPARK_GAIN=1;   // UI only: sparks follow 高光/主体 brightness (REC keeps 1)
 function sparkGain(){const m=U.main,h=U.hl;let g=h.on?Math.min(1,h.amt/2):(m.blend==='glow'?Math.min(1,m.hdr/1.5):.7);if(U.bg==='light')g*=.6;return Math.max(0,g);}
 // keep 主体 readable against the backdrop: dark ink on dark checker -> lighten, light colour on light checker -> darken
-function fixContrast(){const m=U.main,o={};const c=new THREE.Color(m.color);c.getHSL(o,THREE.SRGBColorSpace);let l=o.l;
+let MANUAL_COL=false;   // a colour picked by hand is never re-tuned
+function fixContrast(){if(MANUAL_COL)return;const m=U.main,o={};const c=new THREE.Color(m.color);c.getHSL(o,THREE.SRGBColorSpace);let l=o.l;
   if(U.bg==='dark'&&l<.42)l=Math.min(.62,.45+(.42-l)*.45);else if(U.bg==='light'&&m.blend!=='glow'&&l>.45)l=Math.max(.08,.45-(l-.45)*.6);
   if(l!==o.l)m.color='#'+c.setHSL(o.h,o.s,l,THREE.SRGBColorSpace).getHexString();
   if(U.bg==='light'){const q={},hc=new THREE.Color(U.hl.color);hc.getHSL(q,THREE.SRGBColorSpace);if(q.l>.55)U.hl.color='#'+hc.setHSL(q.h,Math.max(q.s,.8),.46,THREE.SRGBColorSpace).getHexString();}}
@@ -1370,7 +1371,7 @@ const hueOf=c=>{const o={};new THREE.Color(c).getHSL(o,THREE.SRGBColorSpace);ret
 const nearHue=(base,prev)=>{let h=base;for(let i=0;i<8;i++){h=base+rnd(-55,55);const d=Math.abs(((h-prev)%360+540)%360-180);if(d>22)break;}return h;};
 const mainCol=h=>{if(U.bg==='light')U.main.blend='ink';U.main.color=U.main.blend==='glow'?hsl(h,rnd(.7,.95),rnd(.5,.62)):hsl(h,rnd(.55,.9),U.bg==='light'?rnd(.16,.28):rnd(.2,.34));U.main.hdr=U.main.blend==='glow'?+rnd(.7,1).toFixed(2):1;};
 const hlCol=h=>{U.hl.color=U.bg==='light'?hsl(h,rnd(.85,1),rnd(.4,.5)):hsl(h,rnd(.8,1),rnd(.6,.72));U.hl.amt=+(U.main.blend==='glow'?rnd(.8,1.2):rnd(1.1,1.6)).toFixed(2);};
-RND.colors=()=>{const h=Math.random()*360;U.main.blend=Math.random()<.3?'glow':'ink';mainCol(h);hlCol(h+rnd(-50,50));U.link.sparks=U.link.drops=U.link.smoke=1;};
+RND.colors=()=>{MANUAL_COL=false;const h=Math.random()*360;U.main.blend=Math.random()<.3?'glow':'ink';mainCol(h);hlCol(h+rnd(-50,50));U.link.sparks=U.link.drops=U.link.smoke=1;};
 // 主体 / 高光 random = new texture only, colours stay (user 11-12); 全部 changes the colour scheme (RND.colors)
 RND.all=()=>{RND.colors();for(const k of ['diss','gnaw','refr','sparks','smoke','drops']){RND[k]();pushHist(k);}roll();window.BTG_roll3();pushHist('main');pushHist('hl');};
 function pushHist(k){const e=SNAP[k]();HIST[k].unshift(e);if(HIST[k].length>8)HIST[k].pop();HIST[k].on=0;}
@@ -1386,7 +1387,7 @@ function qslider(box,label,o,k,mn,mx,st,cb){const d=document.createElement('div'
   const show=()=>{i.value=o()[k];out.textContent=(+o()[k]).toFixed(st>=1?0:2);};i.oninput=()=>{o()[k]=+i.value;out.textContent=(+i.value).toFixed(st>=1?0:2);cb&&cb();apply();};
   const l=document.createElement('label');l.textContent=label;d.append(l,i,out);box.appendChild(d);refreshers.push(show);}
 function qcolor(box,label,o,k,cb){const d=document.createElement('div');d.className='qrow';const i=document.createElement('input');i.type='color';
-  const show=()=>i.value=o()[k];i.oninput=()=>{o()[k]=i.value;cb&&cb();apply();};const l=document.createElement('label');l.textContent=label;d.append(l,i,document.createElement('span'));box.appendChild(d);refreshers.push(show);}
+  const show=()=>i.value=o()[k];i.oninput=()=>{o()[k]=i.value;if(o()===U.main||o()===U.hl)MANUAL_COL=true;cb&&cb();apply();};const l=document.createElement('label');l.textContent=label;d.append(l,i,document.createElement('span'));box.appendChild(d);refreshers.push(show);}
 function qswitch(box,label,opts,o,k,cb){const d=document.createElement('div');d.className='qrow';const sw=document.createElement('div');sw.className='sw';sw.style.gridColumn='2/4';
   opts.forEach(([v,t])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{o()[k]=v;cb&&cb(v);apply();};b.dataset.v=String(v);sw.appendChild(b);});
   const show=()=>[...sw.children].forEach(b=>b.classList.toggle('on',b.dataset.v===String(o()[k])));
